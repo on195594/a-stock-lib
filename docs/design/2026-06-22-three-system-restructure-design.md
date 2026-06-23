@@ -178,6 +178,12 @@ Prompt内容单独维护一个版本号（`prompt_hash`，跟评分代码层的`
 1. **Phase 1 — 共享包骨架（tracker零风险敞口）**：新建`~/a-stock-lib/`，**复制**（不是移动/删除）tracker现有`market_data.py`的Provider协议代码进去并解耦audit硬编码，加Tushare `stock_basic` fundamentals provider；同步把SKILL.md里"必须靠LLM执行"的部分抽成`prompts/`canonical源+渲染脚本；新增`contracts.py`定义`FrameworkDecision`/`CycleStageAssessment`/`SubjectiveAssessment`。**tracker此时不改一行代码，继续用自己原有的`lib/`跑生产，无任何风险敞口**
 2. **Phase 2 — skill侧先接入，当真实验证场**：a-stock-research/monitor（手动触发、容错率高，不是7x24自动运行）率先把`fetcher.py`换成调用`a-stock-lib`的fundamentals provider；**先跑全量新旧industry值差异对比并人工核对**（5.2节发现的数据质量问题不能静默带过）；同时在这个阶段做`C资源`/`A通用`/`F科技`评分引擎试点、`validate_subjective_evidence`的语法收紧retrofit——用风险更低的系统把新包里的坑先趟完
 3. **Phase 3 — 共享包打磨**：根据Phase 2暴露的问题修`a-stock-lib`，此时tracker仍未接入，不受影响
+
+   **Phase 3硬化清单（2026-06-23 Task2实施时agy审查发现，原样保留待此阶段统一处理）**：以下4处问题逐行核对后确认**均为tracker `lib/market_data.py`现有生产代码的预存缺陷**，Task2按"先复制不改动"原则原样搬运进`a_stock_lib/market_data.py`，未在搬运时顺手修——避免迁移窗口内新旧包行为出现未经验证的偏差。修复时**两边都要改**（新包+tracker本体），不能只改新包：
+   - `CompositeMarketDataProvider._fetch`（双方均在`fetch`方法内）：primary和fallback都失败时，直接`return fallback_result`，primary的真实失败原因（如Token失效）被静默吞掉，只剩fallback的报错，排查方向会被带偏
+   - `normalize_bars_result`/`_normalize_bars_result`：非`l3_bars`场景只校验`date`/`close`两列，`open`/`high`/`low`缺失不会被拦截，下游若依赖这些列做计算会在更深的调用栈里抛`KeyError`而非在边界处收敛成`MarketDataResult("failed")`；另外入参非`pd.DataFrame`（如上游意外返回list/dict）时`getattr(df, "empty", False)`不会拦截，会在`.rename()`处抛未分类异常
+   - `exception_result`/`_exception_result`：错误分类用纯子串匹配，`"time limit exceeded"`会被`"limit" in lowered`误判成`RATE_LIMITED`而非`TIMEOUT`，调用方可能因此做错误的退避重试决策
+   - `MarketDataResult.error_code`类型标注是裸`str | None`，未用`Literal`收束到实际的错误码常量集合，类型检查器无法防拼写错误
 4. **Phase 4 — tracker切换（放在最后，不是第一步）**：只有共享包被skill侧验证足够稳定后，才让tracker把本地`lib/market_data.py`/基本面fetcher换成调用`a-stock-lib`，退役本地副本；同时决定要不要推全部6框架
 
 ---
