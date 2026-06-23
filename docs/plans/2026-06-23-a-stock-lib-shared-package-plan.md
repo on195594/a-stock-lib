@@ -594,7 +594,12 @@ def test_fetch_industry_map_returns_ok_with_mapping(tmp_path):
     assert result.value == {"600036": "银行", "002594": "汽车整车"}
 
 
-def test_fetch_industry_map_without_token_fails(tmp_path):
+def test_fetch_industry_map_without_token_fails(tmp_path, monkeypatch):
+    # token=None falls back to reading the real ~/a-stock-tracker/.env; stub that
+    # lookup so the test doesn't depend on whether this machine has a real token.
+    monkeypatch.setattr(
+        "a_stock_lib.providers.tushare_fundamentals.read_tushare_token", lambda *a, **k: None
+    )
     provider = TushareFundamentalsProvider(token=None, cache_path=tmp_path / "cache.json")
     result = provider.fetch_industry_map()
     assert result.status == "failed"
