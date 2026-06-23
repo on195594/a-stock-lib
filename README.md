@@ -11,7 +11,7 @@ A 股投研三系统（`a-stock-tracker` 评分管道 / `a-stock-research` 新�
 实施计划见 [`docs/plans/2026-06-23-a-stock-lib-shared-package-plan.md`](docs/plans/2026-06-23-a-stock-lib-shared-package-plan.md)，按 strangler-fig 模式分阶段迁移：
 
 - **Phase 1（已完成）**：包骨架 + Provider 原语层（`market_data.py`）+ Tushare/BaoStock 报价 Provider 迁移 + 新增 Tushare 基本面行业分类 Provider。`a-stock-tracker/lib/` 期间零改动。
-- **Phase 2（未开始）**：`a-stock-research`/`a-stock-monitor` 先接入本包，作为低风险验证场。
+- **Phase 2（部分完成，2026-06-23）**：范围按用户决定收窄为①②——`a-stock-research/fetcher.py`接入本包的`TushareFundamentalsProvider`替换不稳定的AKShare行业字段（agy审查发现4处真实问题已修复，见`a-stock-research`仓库commit `724b858`）；全量新旧industry值diff核验已跑（25支持仓：15支占位符修复/8支分类粒度差异非bug/0支未命中）。原计划绑在Phase 2里的评分引擎试点、`validate_subjective_evidence`语法retrofit**改为独立任务**，不在此次范围内（且后者已在06-22 commit`421fe2c`里直接实现，与本包无关）。`a-stock-monitor`尚未接入。
 - **Phase 3（未开始）**：根据 Phase 2 暴露的问题打磨本包。已知待修问题见设计文档"Phase 3 硬化清单"一节。
 - **Phase 4（未开始）**：`a-stock-tracker` 最后切换，退役本地 `lib/` 副本。**目前 tracker 仍在用自己本地的 `lib/`，未依赖本包。**
 

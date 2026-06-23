@@ -177,6 +177,8 @@ Prompt内容单独维护一个版本号（`prompt_hash`，跟评分代码层的`
 
 1. **Phase 1 — 共享包骨架（tracker零风险敞口）**：新建`~/a-stock-lib/`，**复制**（不是移动/删除）tracker现有`market_data.py`的Provider协议代码进去并解耦audit硬编码，加Tushare `stock_basic` fundamentals provider；同步把SKILL.md里"必须靠LLM执行"的部分抽成`prompts/`canonical源+渲染脚本；新增`contracts.py`定义`FrameworkDecision`/`CycleStageAssessment`/`SubjectiveAssessment`。**tracker此时不改一行代码，继续用自己原有的`lib/`跑生产，无任何风险敞口**
 2. **Phase 2 — skill侧先接入，当真实验证场**：a-stock-research/monitor（手动触发、容错率高，不是7x24自动运行）率先把`fetcher.py`换成调用`a-stock-lib`的fundamentals provider；**先跑全量新旧industry值差异对比并人工核对**（5.2节发现的数据质量问题不能静默带过）；同时在这个阶段做`C资源`/`A通用`/`F科技`评分引擎试点、`validate_subjective_evidence`的语法收紧retrofit——用风险更低的系统把新包里的坑先趟完
+
+   **⚠️ 2026-06-23实际执行范围已收窄（用户决定）**：本节描述的Phase 2原计划把"行业Provider替换"和"评分引擎试点"/"证据语法retrofit"绑在一起；实际执行时拆分为：①②(行业Provider替换+diff核验，仅`a-stock-research`，已完成，见README)单独执行；评分引擎试点、证据语法retrofit**改为独立任务分别单开**，不在本次Phase 2范围内。另外，`validate_subjective_evidence`这个函数本身**已经在06-22 commit`421fe2c`里直接实现并上线**（在`a-stock-research`自己的`cache.py`，不经过`a-stock-lib`），这里提到的"retrofit"如果还要做，应理解为"对已上线版本做进一步语法收紧"，不是从零实现。`a-stock-monitor`接入尚未开始。
 3. **Phase 3 — 共享包打磨**：根据Phase 2暴露的问题修`a-stock-lib`，此时tracker仍未接入，不受影响
 
    **Phase 3硬化清单（2026-06-23 Task2实施时agy审查发现，原样保留待此阶段统一处理）**：以下4处问题逐行核对后确认**均为tracker `lib/market_data.py`现有生产代码的预存缺陷**，Task2按"先复制不改动"原则原样搬运进`a_stock_lib/market_data.py`，未在搬运时顺手修——避免迁移窗口内新旧包行为出现未经验证的偏差。修复时**两边都要改**（新包+tracker本体），不能只改新包：
