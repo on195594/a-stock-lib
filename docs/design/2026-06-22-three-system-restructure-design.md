@@ -186,6 +186,12 @@ Prompt内容单独维护一个版本号（`prompt_hash`，跟评分代码层的`
    - `normalize_bars_result`/`_normalize_bars_result`：非`l3_bars`场景只校验`date`/`close`两列，`open`/`high`/`low`缺失不会被拦截，下游若依赖这些列做计算会在更深的调用栈里抛`KeyError`而非在边界处收敛成`MarketDataResult("failed")`；另外入参非`pd.DataFrame`（如上游意外返回list/dict）时`getattr(df, "empty", False)`不会拦截，会在`.rename()`处抛未分类异常
    - `exception_result`/`_exception_result`：错误分类用纯子串匹配，`"time limit exceeded"`会被`"limit" in lowered`误判成`RATE_LIMITED`而非`TIMEOUT`，调用方可能因此做错误的退避重试决策
    - `MarketDataResult.error_code`类型标注是裸`str | None`，未用`Literal`收束到实际的错误码常量集合，类型检查器无法防拼写错误
+
+   **追加（2026-06-23，agy编码规范体检发现，已逐行核对确认均为tracker `lib/tushare_provider.py`/`lib/baostock_provider.py`现有生产代码的预存缺陷，与上面4条同等处理——两边都要改）**：
+   - `tushare_quotes.py:39`（`self.token = os.environ.get("TUSHARE_TOKEN") if token is None else token`）：与`tushare_fundamentals.py`的`read_tushare_token()`读`.env`文件的方式不一致，tracker原有的运行环境靠外部把`TUSHARE_TOKEN`导出成真实环境变量，三个provider的token来源没统一
+   - `baostock_quotes.py:115`（`login = client.login()`）：在`try`块（126行起）之外执行，登录阶段真实抛出的异常（非baostock返回的`error_code`字段，而是Python异常）不会被收敛成`MarketDataResult("failed")`，会直接冒泡给调用方
+   - `baostock_quotes.py:103`（`to_baostock_index_code(symbol)`）：在进入`_fetch_bars`内部统一`try`块之前调用，非法`symbol`触发的`ValueError`不会被转译
+   - `baostock_quotes.py:_fetch_bars`（105-157行，53行）：超出函数≤50行的规范，混合了懒加载导入/登录鉴权/抓取/finally清理4类职责，建议拆出`_ensure_login()`私有方法
 4. **Phase 4 — tracker切换（放在最后，不是第一步）**：只有共享包被skill侧验证足够稳定后，才让tracker把本地`lib/market_data.py`/基本面fetcher换成调用`a-stock-lib`，退役本地副本；同时决定要不要推全部6框架
 
 ---

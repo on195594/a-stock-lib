@@ -22,10 +22,17 @@ pytest tests/ -v
 ## 全局约束
 
 - **不要修改 `~/a-stock-tracker/lib/`** —— 本包目前处于"从 tracker 复制+新增"阶段，tracker 还没有切换到依赖本包，必须保持零风险敞口
-- **不要硬编码 `TUSHARE_TOKEN`** —— 运行时通过 `read_tushare_token()` 从 `~/a-stock-tracker/.env` 读取
+- **不要硬编码 `TUSHARE_TOKEN`** —— 运行时通过 `read_tushare_token()` 从 `~/a-stock-tracker/.env` 读取。已知例外：`tushare_quotes.py`（从 tracker 原样迁移）仍用 `os.environ.get("TUSHARE_TOKEN")`，是 tracker 原有行为，记入硬化清单，不要在其他任务里顺手改
 - **不要在测试里发起真实网络请求** —— 第三方 SDK（`tushare`/`baostock`）的 import 必须留在方法内部（懒加载），测试通过给 Provider 构造函数传入 mock `client` 参数来隔离
 - **所有新函数要有类型注解，不要裸 `raise Exception`** —— 失败路径统一返回 `MarketDataResult(status="failed", error_code=...)`
 - **新增依赖前先确认必要性**，不要静默引入 `pyproject.toml` 之外的包
+
+## 项目专属编码规范（2026-06-23 agy基于现有代码模式提炼）
+
+1. **第三方SDK调用必须有完整异常屏障**：触发真实网络交互的SDK调用必须完整包在`try...except Exception`内，统一转译成`MarketDataResult(status="failed", error_code=...)`，不让原生异常越过Provider边界
+2. **本地缓存文件必须原子写入**：用"写临时文件→`fsync`→`Path.replace()`"模式（参考`tushare_fundamentals.py`的`_write_cache`），不用裸`open("w")`覆盖写——本包会被多进程同时导入，覆盖写期间另一进程可能读到截断的残缺文件
+3. **第三方SDK的import必须懒加载在方法内部**，且构造函数保留`client: Any | None = None`注入入口
+4. **单日时点查询要做向前回溯的降级语义**：停牌/节假日缺数据时不直接`failed`，向前找最近有效交易日，`status="degraded"`+真实`freshness_days`，让调用方自行决定能否接受
 
 ## 角色分工与流水线
 

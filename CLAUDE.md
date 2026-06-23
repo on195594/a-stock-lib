@@ -37,9 +37,20 @@ python3 -m build           # 产出版本化 wheel（消费方安装这个，不
 ## 安全红线
 
 - **禁止修改 `~/a-stock-tracker/lib/`** —— 在 Phase 4（tracker 切换）之前，tracker 必须保持零风险敞口，继续用自己本地的 `lib/` 跑生产；本包只做"复制+新增"，不做"挪走"
-- **`TUSHARE_TOKEN` 禁止硬编码** —— 运行时从 `~/a-stock-tracker/.env` 读取（`read_tushare_token()`），路径可通过构造参数覆盖，三个消费方共用同一份 token
+- **`TUSHARE_TOKEN` 禁止硬编码** —— 运行时从 `~/a-stock-tracker/.env` 读取（`read_tushare_token()`），路径可通过构造参数覆盖，三个消费方共用同一份 token。**已知不一致**：`tushare_quotes.py`（从 tracker 原样迁移）仍用 `os.environ.get("TUSHARE_TOKEN")` 而非 `read_tushare_token()`——这是 tracker 原有行为，迁移时按"复制不改动"原则保留，记入下方"Phase 3 硬化清单"，不在迁移任务里顺手改
 - **测试禁止发起真实网络请求** —— `tushare`/`baostock` SDK 在 Provider 内部是懒加载（方法内 `import`，不是模块顶层），测试用注入 `client` 参数的方式 mock，不依赖真实 SDK 包安装
 - **新增函数必须有类型注解，禁止裸 `raise Exception`** —— 失败路径统一收敛成 `MarketDataResult(status="failed", error_code=...)`，不让异常裸露给调用方
+
+---
+
+## 项目专属编码规范
+
+全局通用规范（PascalCase类/snake_case函数/函数≤50行用卫语句/logger禁print/dataclass优先/自定义异常禁裸raise Exception）同样适用本项目。以下4条是这个项目特有的、通用规范没覆盖的补充（2026-06-23 agy基于现有代码模式提炼，覆盖"外部数据源接入层"特有的问题）：
+
+1. **第三方SDK调用必须有完整异常屏障，统一转译成`MarketDataResult`**：所有触发真实网络交互的SDK调用（及紧邻的入参清洗逻辑），必须完整包在`try...except Exception`内，转译成`MarketDataResult(status="failed", error_code=...)`。不能让`ConnectionError`/`ValueError`等原生异常越过Provider边界直接抛给业务方——上层消费方不应该被迫依赖`tushare`/`baostock`的异常类型来写自己的`except`。
+2. **本地缓存文件必须原子写入**：涉及把数据落地到本地 JSON/CSV 等缓存文件的逻辑，必须用"写临时文件完整内容→`fsync`→`Path.replace()`原子替换"的模式（参考`tushare_fundamentals.py`的`_write_cache`），不能用裸的`open("w")`覆盖写——本包会被多个进程同时导入，覆盖写期间另一个进程读到的可能是被截断的残缺文件。
+3. **第三方SDK的import必须懒加载在方法内部，且保留`client`注入入口**：`tushare`/`baostock`等重依赖不能出现在模块顶层import，必须在用到的方法内部按需`import`；构造函数必须保留`client: Any | None = None`参数用于测试注入mock，不依赖真实SDK包安装就能跑单测。
+4. **单日时点查询要做向前回溯的降级语义，不能直接报失败**：查某个确切交易日的数据（如`fetch_score_price`）如果恰逢停牌/周末/节假日缺数据，不应该直接`status="failed"`，而要向前找最近一个有效交易日的数据，`status="degraded"`并带上真实的`freshness_days`，让调用方自己决定能不能接受这个陈旧度——A股节假日调休复杂、停牌情况多，这条降级逻辑应该收敛在Provider层，不要让三个消费方各自重复写日历兜底代码。
 
 ---
 
