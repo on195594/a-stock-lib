@@ -1,8 +1,10 @@
 # Phase 4 tracker 切换到 a-stock-lib 计划
 
 日期：2026-06-25
-状态：agy 复查通过，尚未执行
+状态：已执行完成，tracker 已切换到 `a-stock-lib==0.1.1`
 范围：`~/a-stock-tracker/` 消费 `a-stock-lib==0.1.1`，退役 tracker 本地行情 Provider 副本
+
+执行记录：2026-06-25 已在 `~/a-stock-tracker` 完成切换；`lib/market_data.py` 保留 tracker 门禁/cache wrapper，Tushare/BaoStock provider 来自 `a_stock_lib.providers.*`，本地 `lib/tushare_provider.py` 与 `lib/baostock_provider.py` 已删除。验证通过：tracker `pytest tests/ -q` 171 passed、`ruff check .` passed、`mypy` passed、`scripts/check_market_data_readiness.py` READY；a-stock-lib `pytest tests/ -v` 44 passed。agy 复查无 Blocker/High/Medium。
 
 ## 背景
 
