@@ -6,6 +6,7 @@ import pytest
 from a_stock_lib.market_data import (
     EMPTY_RESPONSE,
     MISSING_COLUMNS,
+    SCHEMA_CHANGED,
     TIMEOUT,
     CompositeMarketDataProvider,
     MarketDataResult,
@@ -75,6 +76,49 @@ def test_composite_provider_no_fallback_returns_primary_failure():
     assert result.error_code == TIMEOUT
 
 
+def test_composite_provider_exit_always_closes_fallback_when_primary_exit_raises():
+    class _ExitRaisesProvider(_FakeProvider):
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            raise RuntimeError("primary close failed")
+
+    class _ExitRecordsProvider(_FakeProvider):
+        def __init__(self, result: MarketDataResult):
+            super().__init__(result)
+            self.closed = False
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            self.closed = True
+
+    primary = _ExitRaisesProvider(MarketDataResult(1.0, "ok", "primary.src", "t"))
+    fallback = _ExitRecordsProvider(MarketDataResult(2.0, "ok", "fallback.src", "t"))
+    composite = CompositeMarketDataProvider(primary, fallback)
+
+    with pytest.raises(RuntimeError, match="primary close failed"):
+        composite.__exit__(None, None, None)
+
+    assert fallback.closed is True
+
+
+def test_composite_provider_preserves_primary_reason_when_fallback_also_fails():
+    primary = _FakeProvider(
+        MarketDataResult(None, "failed", "primary.src", "t", error_code=TIMEOUT)
+    )
+    fallback = _FakeProvider(
+        MarketDataResult(None, "failed", "fallback.src", "t", error_code=EMPTY_RESPONSE)
+    )
+    composite = CompositeMarketDataProvider(primary, fallback)
+
+    result = composite.fetch_score_price("600036", "2026-06-23")
+
+    assert result.status == "failed"
+    assert result.source == "fallback.src"
+    assert result.error_code == EMPTY_RESPONSE
+    assert result.fallback_source == "primary.src"
+    assert result.fallback_reason == TIMEOUT
+    assert "primary.src" in (result.error_message or "")
+    assert "fallback.src" in (result.error_message or "")
+
+
 def test_normalize_bars_result_renames_chinese_columns():
     df = pd.DataFrame(
         {"日期": ["2026-06-23"], "开盘": [10.0], "最高": [11.0], "最低": [9.5], "收盘": [10.5], "成交量": [1000]}
@@ -97,6 +141,24 @@ def test_normalize_bars_result_missing_columns_fails():
     assert result.error_code == MISSING_COLUMNS
 
 
+def test_normalize_bars_result_requires_ohlc_for_non_l3_bars():
+    df = pd.DataFrame({"日期": ["2026-06-23"], "收盘": [10.5]})
+    result = normalize_bars_result(df, "test.source", "score_price")
+    assert result.status == "failed"
+    assert result.error_code == MISSING_COLUMNS
+
+
+def test_normalize_bars_result_non_dataframe_fails():
+    result = normalize_bars_result([{"date": "2026-06-23", "close": 10.5}], "test.source", "l3_bars")
+    assert result.status == "failed"
+    assert result.error_code == SCHEMA_CHANGED
+
+
 def test_exception_result_classifies_timeout():
     result = exception_result("test.source", Exception("Connection timeout after 30s"))
+    assert result.error_code == TIMEOUT
+
+
+def test_exception_result_classifies_time_limit_as_timeout():
+    result = exception_result("test.source", Exception("time limit exceeded"))
     assert result.error_code == TIMEOUT

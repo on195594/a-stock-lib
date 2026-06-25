@@ -24,12 +24,15 @@ DEFAULT_ENV_PATH = Path.home() / "a-stock-tracker" / ".env"
 
 def read_tushare_token(env_path: Path = DEFAULT_ENV_PATH) -> str | None:
     """从 tracker 的 .env 文件读取 TUSHARE_TOKEN，三个消费方共用同一份token。"""
-    if not env_path.exists():
+    if not env_path.is_file():
         return None
     for line in env_path.read_text().splitlines():
-        stripped = line.strip()
-        if stripped.startswith("TUSHARE_TOKEN="):
-            return stripped.split("=", 1)[1].strip().strip('"').strip("'")
+        stripped = line.split("#", 1)[0].strip()
+        if "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        if key.strip() == "TUSHARE_TOKEN":
+            return value.strip().strip('"').strip("'")
     return None
 
 
@@ -42,8 +45,9 @@ class TushareFundamentalsProvider:
         cache_path: Path = DEFAULT_CACHE_PATH,
         ttl_seconds: int = DEFAULT_TTL_SECONDS,
         client: Any | None = None,
+        env_path: Path = DEFAULT_ENV_PATH,
     ) -> None:
-        self.token = token if token is not None else read_tushare_token()
+        self.token = token if token is not None else os.environ.get("TUSHARE_TOKEN") or read_tushare_token(env_path)
         self.cache_path = Path(cache_path)
         self.ttl_seconds = ttl_seconds
         self._client = client

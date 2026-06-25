@@ -6,13 +6,13 @@ A 股投研三系统（`a-stock-tracker` 评分管道 / `a-stock-research` 新�
 
 详见设计文档：[`docs/design/2026-06-22-three-system-restructure-design.md`](docs/design/2026-06-22-three-system-restructure-design.md)。核心动机：三系统重复实现行情 Provider、AKShare 行业接口长期不稳定、止损系数差异化依赖脆弱的字符串反推框架。
 
-## 当前状态（2026-06-23）
+## 当前状态（2026-06-25）
 
 实施计划见 [`docs/plans/2026-06-23-a-stock-lib-shared-package-plan.md`](docs/plans/2026-06-23-a-stock-lib-shared-package-plan.md)，按 strangler-fig 模式分阶段迁移：
 
 - **Phase 1（已完成）**：包骨架 + Provider 原语层（`market_data.py`）+ Tushare/BaoStock 报价 Provider 迁移 + 新增 Tushare 基本面行业分类 Provider。`a-stock-tracker/lib/` 期间零改动。
 - **Phase 2（已完成，2026-06-23）**：范围按用户决定收窄为①②——`a-stock-research/fetcher.py`接入本包的`TushareFundamentalsProvider`替换不稳定的AKShare行业字段（agy审查发现4处真实问题已修复，见`a-stock-research`仓库commit `724b858`）；全量新旧industry值diff核验已跑（25支持仓：15支占位符修复/8支分类粒度差异非bug/0支未命中）。原计划绑在Phase 2里的评分引擎试点、`validate_subjective_evidence`语法retrofit**改为独立任务**，不在此次范围内（且后者已在06-22 commit`421fe2c`里直接实现，与本包无关）。`a-stock-monitor`**没有自己的代码**（只有`SKILL.md`，所有数据操作都shell调用`a-stock-research`的`cache.py`），无法"同research模式接入"；改为核实+刷新其5支持仓的industry缓存，验证`portfolio-risk`框架推断不再出现低置信度兜底标记。
-- **Phase 3（未开始）**：根据 Phase 2 暴露的问题打磨本包。已知待修问题见设计文档"Phase 3 硬化清单"一节。
+- **Phase 3（本包侧已完成，2026-06-25）**：已按设计文档"Phase 3 硬化清单"打磨 `a-stock-lib`：保留双源失败时 primary/fallback 两侧原因；收紧 bars schema 校验和非 DataFrame 输入处理；修正 `time limit exceeded` 误判；统一 Tushare 报价 Provider 的 token 来源（环境变量优先，tracker `.env` 兜底）；收敛 BaoStock 登录和代码转换异常。按仓库约束，本阶段**未修改 `a-stock-tracker/lib/`**，tracker 侧同类预存缺陷仍需在 Phase 4 切换前单独同步处理。
 - **Phase 4（未开始）**：`a-stock-tracker` 最后切换，退役本地 `lib/` 副本。**目前 tracker 仍在用自己本地的 `lib/`，未依赖本包。**
 
 ## 包结构

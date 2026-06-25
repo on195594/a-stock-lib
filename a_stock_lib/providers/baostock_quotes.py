@@ -8,9 +8,11 @@ import pandas as pd
 from a_stock_lib.market_data import (
     EMPTY_RESPONSE,
     MISSING_COLUMNS,
+    RATE_LIMITED,
     REMOTE_DISCONNECTED,
     SCHEMA_CHANGED,
     INSUFFICIENT_WINDOW,
+    TIMEOUT,
     UNKNOWN_ERROR,
     MarketDataResult,
 )
@@ -100,53 +102,28 @@ class BaoStockMarketDataProvider:
 
     def fetch_index_bars(self, symbol: str) -> MarketDataResult[pd.DataFrame]:
         start_date = (date.today() - timedelta(days=3650)).isoformat()
-        return self._fetch_bars(to_baostock_index_code(symbol), start_date, date.today().isoformat(), "index_bars")
+        try:
+            code = to_baostock_index_code(symbol)
+        except Exception as exc:
+            return _exception_result(exc)
+        return self._fetch_bars(code, start_date, date.today().isoformat(), "index_bars")
 
     def _fetch_bars(self, code: str, start_date: str, end_date: str, purpose: str) -> MarketDataResult[pd.DataFrame]:
-        if self._client is None:
-            try:
-                import baostock as baostock_module
-            except Exception as exc:
-                return _exception_result(exc)
-            self._client = baostock_module
-        client = self._client
-
-        if not self._is_logged_in:
-            login = client.login()
-            if getattr(login, "error_code", "0") != "0":
-                return MarketDataResult(
-                    None,
-                    "failed",
-                    BAOSTOCK_SOURCE,
-                    _now(),
-                    error_code=REMOTE_DISCONNECTED,
-                    error_message=getattr(login, "error_msg", "baostock login failed"),
-                )
-            self._is_logged_in = True
         try:
-            rs = client.query_history_k_data_plus(
-                to_baostock_stock_code(code),
-                "date,code,open,high,low,close,volume,amount,adjustflag,tradestatus",
-                start_date=start_date,
-                end_date=end_date,
-                frequency="d",
-                adjustflag="3",
-            )
-            if getattr(rs, "error_code", "0") != "0":
-                return MarketDataResult(
-                    None,
-                    "failed",
-                    BAOSTOCK_SOURCE,
-                    _now(),
-                    error_code=UNKNOWN_ERROR,
-                    error_message=getattr(rs, "error_msg", "baostock query failed"),
-                )
+            client_result = self._ensure_client()
+            if isinstance(client_result, MarketDataResult):
+                return client_result
+            login_failure = self._ensure_login(client_result)
+            if login_failure is not None:
+                return login_failure
+            rs = self._query_bars(client_result, code, start_date, end_date)
             rows = []
             while rs.next():
                 rows.append(rs.get_row_data())
             df = pd.DataFrame(rows, columns=rs.fields)
             return _normalize_baostock_bars(df, purpose)
         except Exception as exc:
+            self._is_logged_in = False
             return _exception_result(exc)
         finally:
             if not self._in_context:
@@ -156,10 +133,56 @@ class BaoStockMarketDataProvider:
                     pass
                 self._is_logged_in = False
 
+    def _ensure_client(self) -> Any | MarketDataResult[pd.DataFrame]:
+        if self._client is not None:
+            return self._client
+        try:
+            import baostock as baostock_module
+        except Exception as exc:
+            return _exception_result(exc)
+        self._client = baostock_module
+        return self._client
+
+    def _ensure_login(self, client: Any) -> MarketDataResult[pd.DataFrame] | None:
+        if self._is_logged_in:
+            return None
+        try:
+            login = client.login()
+        except Exception as exc:
+            return _exception_result(exc)
+        if getattr(login, "error_code", "0") != "0":
+            return MarketDataResult(
+                None,
+                "failed",
+                BAOSTOCK_SOURCE,
+                _now(),
+                error_code=REMOTE_DISCONNECTED,
+                error_message=getattr(login, "error_msg", "baostock login failed"),
+            )
+        self._is_logged_in = True
+        return None
+
+    def _query_bars(self, client: Any, code: str, start_date: str, end_date: str) -> Any:
+        rs = client.query_history_k_data_plus(
+            to_baostock_stock_code(code),
+            "date,code,open,high,low,close,volume,amount,adjustflag,tradestatus",
+            start_date=start_date,
+            end_date=end_date,
+            frequency="d",
+            adjustflag="3",
+        )
+        if getattr(rs, "error_code", "0") != "0":
+            raise RuntimeError(getattr(rs, "error_msg", "baostock query failed"))
+        return rs
+
 
 def to_baostock_stock_code(code: str) -> str:
     normalized = code.strip().lower()
-    if normalized.startswith(("sh.", "sz.")):
+    if normalized.endswith((".sh", ".sz", ".bj")):
+        normalized = f"{normalized[-2:]}.{normalized[:-3]}"
+    elif normalized.startswith(("sh", "sz", "bj")) and not normalized.startswith(("sh.", "sz.", "bj.")):
+        normalized = f"{normalized[:2]}.{normalized[2:]}"
+    if normalized.startswith(("sh.", "sz.", "bj.")):
         return normalized
     if len(normalized) != 6 or not normalized.isdigit():
         raise ValueError(f"unsupported stock code: {code}")
@@ -167,6 +190,8 @@ def to_baostock_stock_code(code: str) -> str:
         return f"sh.{normalized}"
     if normalized.startswith(("0", "3")):
         return f"sz.{normalized}"
+    if normalized.startswith(("4", "8")):
+        return f"bj.{normalized}"
     raise ValueError(f"unsupported stock code: {code}")
 
 
@@ -174,14 +199,27 @@ def to_baostock_index_code(symbol: str) -> str:
     normalized = symbol.strip().lower()
     if normalized in {"000300", "sh000300", "sh.000300"}:
         return "sh.000300"
+    if normalized in {"000001", "sh000001", "sh.000001"}:
+        return "sh.000001"
     return to_baostock_stock_code(symbol)
 
 
 def _normalize_baostock_bars(df: Any, purpose: str) -> MarketDataResult[pd.DataFrame]:
     fetched_at = _now()
-    if df is None or getattr(df, "empty", False):
+    if df is None:
         return MarketDataResult(None, "failed", BAOSTOCK_SOURCE, fetched_at, error_code=EMPTY_RESPONSE)
-    required = {"date", "close"}
+    if not isinstance(df, pd.DataFrame):
+        return MarketDataResult(
+            None,
+            "failed",
+            BAOSTOCK_SOURCE,
+            fetched_at,
+            error_code=SCHEMA_CHANGED,
+            error_message=f"expected pandas.DataFrame, got {type(df).__name__}",
+        )
+    if df.empty:
+        return MarketDataResult(None, "failed", BAOSTOCK_SOURCE, fetched_at, error_code=EMPTY_RESPONSE)
+    required = {"date", "open", "high", "low", "close"}
     if purpose == "l3_bars":
         required.add("volume")
     missing = required - set(df.columns)
@@ -234,7 +272,16 @@ def _scalar_failure(result: MarketDataResult[pd.DataFrame]) -> MarketDataResult[
 
 def _exception_result(exc: Exception) -> MarketDataResult[pd.DataFrame]:
     message = str(exc)
-    return MarketDataResult(None, "failed", BAOSTOCK_SOURCE, _now(), error_code=UNKNOWN_ERROR, error_message=message)
+    lowered = message.lower()
+    if "timeout" in lowered or "timed out" in lowered or "time limit" in lowered:
+        code = TIMEOUT
+    elif "disconnect" in lowered or "connection" in lowered:
+        code = REMOTE_DISCONNECTED
+    elif "rate limit" in lowered or "rate" in lowered or "频次" in message or "限频" in message:
+        code = RATE_LIMITED
+    else:
+        code = UNKNOWN_ERROR
+    return MarketDataResult(None, "failed", BAOSTOCK_SOURCE, _now(), error_code=code, error_message=message)
 
 
 def _parse_date(value: str) -> date:

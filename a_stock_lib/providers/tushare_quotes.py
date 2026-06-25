@@ -4,6 +4,7 @@ import os
 import random
 import time
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Any, Callable
 
 import pandas as pd
@@ -20,6 +21,7 @@ from a_stock_lib.market_data import (
     UNKNOWN_ERROR,
     MarketDataResult,
 )
+from a_stock_lib.providers.tushare_fundamentals import DEFAULT_ENV_PATH, read_tushare_token
 
 DAILY_SOURCE = "tushare.daily"
 INDEX_DAILY_SOURCE = "tushare.index_daily"
@@ -35,8 +37,9 @@ class TushareMarketDataProvider:
         token: str | None = None,
         client: Any | None = None,
         client_factory: Callable[[str], Any] | None = None,
+        env_path: Path = DEFAULT_ENV_PATH,
     ) -> None:
-        self.token = os.environ.get("TUSHARE_TOKEN") if token is None else token
+        self.token = token if token is not None else os.environ.get("TUSHARE_TOKEN") or read_tushare_token(env_path)
         self._client = client
         self._client_factory = client_factory
 
@@ -104,7 +107,7 @@ class TushareMarketDataProvider:
                 return func(*args, **kwargs)
             except Exception as exc:
                 err_msg = str(exc).lower()
-                is_rate_limit = "rate" in err_msg or "limit" in err_msg or "频次" in err_msg or "限频" in err_msg
+                is_rate_limit = "rate limit" in err_msg or "over limit" in err_msg or "频次" in err_msg or "限频" in err_msg
                 is_transient = is_rate_limit or "timeout" in err_msg or "timed out" in err_msg or "connection" in err_msg or "disconnect" in err_msg
                 if is_transient and attempt < max_retries - 1:
                     delay = base_delay * (2 ** attempt) + random.uniform(0, 0.5)
@@ -140,7 +143,18 @@ class TushareMarketDataProvider:
         except Exception as exc:
             return _exception_result(TRADE_CAL_SOURCE, exc)
         fetched_at = _now()
-        if df is None or getattr(df, "empty", False):
+        if df is None:
+            return MarketDataResult(None, "failed", TRADE_CAL_SOURCE, fetched_at, error_code=EMPTY_RESPONSE)
+        if not isinstance(df, pd.DataFrame):
+            return MarketDataResult(
+                None,
+                "failed",
+                TRADE_CAL_SOURCE,
+                fetched_at,
+                error_code=SCHEMA_CHANGED,
+                error_message=f"expected pandas.DataFrame, got {type(df).__name__}",
+            )
+        if df.empty:
             return MarketDataResult(None, "failed", TRADE_CAL_SOURCE, fetched_at, error_code=EMPTY_RESPONSE)
         if "cal_date" not in df.columns:
             return MarketDataResult(None, "failed", TRADE_CAL_SOURCE, fetched_at, error_code=MISSING_COLUMNS)
@@ -215,10 +229,21 @@ def to_tushare_index_code(symbol: str) -> str:
 
 def _normalize_tushare_bars(df: Any, source: str, purpose: str) -> MarketDataResult[pd.DataFrame]:
     fetched_at = _now()
-    if df is None or getattr(df, "empty", False):
+    if df is None:
+        return MarketDataResult(None, "failed", source, fetched_at, error_code=EMPTY_RESPONSE)
+    if not isinstance(df, pd.DataFrame):
+        return MarketDataResult(
+            None,
+            "failed",
+            source,
+            fetched_at,
+            error_code=SCHEMA_CHANGED,
+            error_message=f"expected pandas.DataFrame, got {type(df).__name__}",
+        )
+    if df.empty:
         return MarketDataResult(None, "failed", source, fetched_at, error_code=EMPTY_RESPONSE)
     normalized = df.rename(columns={"trade_date": "date", "vol": "volume"}).copy()
-    required = {"date", "close"}
+    required = {"date", "open", "high", "low", "close"}
     if purpose == "l3_bars":
         required.add("volume")
     missing = required - set(normalized.columns)
@@ -264,9 +289,9 @@ def _scalar_failure(result: MarketDataResult[pd.DataFrame], source: str) -> Mark
 def _exception_result(source: str, exc: Exception) -> MarketDataResult[pd.DataFrame]:
     message = str(exc)
     lowered = message.lower()
-    if "timeout" in lowered or "timed out" in lowered:
+    if "timeout" in lowered or "timed out" in lowered or "time limit" in lowered:
         code = TIMEOUT
-    elif "rate" in lowered or "limit" in lowered or "频次" in message or "限频" in message:
+    elif "rate limit" in lowered or "rate" in lowered or "频次" in message or "限频" in message:
         code = RATE_LIMITED
     elif "权限" in message or "积分" in message or "permission" in lowered:
         code = PERMISSION_DENIED

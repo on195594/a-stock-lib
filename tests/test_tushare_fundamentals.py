@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 
 from a_stock_lib.market_data import SCHEMA_CHANGED
-from a_stock_lib.providers.tushare_fundamentals import TushareFundamentalsProvider
+from a_stock_lib.providers.tushare_fundamentals import TushareFundamentalsProvider, read_tushare_token
 
 
 class _FakeProClient:
@@ -49,6 +49,46 @@ def test_fetch_industry_map_without_token_fails(tmp_path, monkeypatch):
     result = provider.fetch_industry_map()
     assert result.status == "failed"
     assert result.error_code == "AUTH_MISSING"
+
+
+def test_fetch_industry_map_reads_token_from_env_var(tmp_path, monkeypatch):
+    monkeypatch.setenv("TUSHARE_TOKEN", "env-token-123")
+    provider = TushareFundamentalsProvider(
+        token=None,
+        cache_path=tmp_path / "cache.json",
+        env_path=tmp_path / "missing.env",
+        client=_FakeProClient(_sample_df()),
+    )
+
+    result = provider.fetch_industry_map()
+
+    assert provider.token == "env-token-123"
+    assert result.status == "ok"
+
+
+def test_fetch_industry_map_reads_token_from_custom_env_path(tmp_path, monkeypatch):
+    monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
+    env_path = tmp_path / ".env"
+    env_path.write_text("TUSHARE_TOKEN=file-token-456\n")
+    provider = TushareFundamentalsProvider(
+        token=None,
+        cache_path=tmp_path / "cache.json",
+        env_path=env_path,
+        client=_FakeProClient(_sample_df()),
+    )
+
+    result = provider.fetch_industry_map()
+
+    assert provider.token == "file-token-456"
+    assert result.status == "ok"
+
+
+def test_read_tushare_token_handles_spaces_comments_and_directories(tmp_path):
+    env_path = tmp_path / ".env"
+    env_path.write_text('TUSHARE_TOKEN = "file-token-789" # comment\n')
+
+    assert read_tushare_token(env_path) == "file-token-789"
+    assert read_tushare_token(tmp_path) is None
 
 
 def test_fetch_industry_map_uses_cache_within_ttl(tmp_path):
