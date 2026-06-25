@@ -4,6 +4,8 @@
 
 A 股投研三系统（`a-stock-tracker`/`a-stock-research`/`a-stock-monitor`）共享的市场数据 Provider 原语包。从 `a-stock-tracker/lib/` 剥离，目标是消灭三套重复的行情/基本面抓取实现。
 
+**当前状态（2026-06-25）**：本仓库版本为 `0.1.1`。Phase 1 核心包、Phase 2 research 侧行业 Provider 接入、Phase 3 本包侧硬化均已完成并提交；`a-stock-tracker` 仍未切换到依赖本包，Phase 4 未开始。
+
 **文档指针**：
 - 架构决策 / 为什么这么设计 → `docs/design/2026-06-22-three-system-restructure-design.md`
 - 实施任务拆解 / 验收标准 → `docs/plans/2026-06-23-a-stock-lib-shared-package-plan.md`
@@ -28,8 +30,8 @@ python3 -m build           # 产出版本化 wheel（消费方安装这个，不
 | 文件 | 职责 |
 |------|------|
 | `a_stock_lib/market_data.py` | Provider 协议原语：`MarketDataResult`/错误码常量/`CompositeMarketDataProvider`/`normalize_bars_result`/`exception_result`。纯函数+无 IO 副作用，不依赖任何具体数据源 SDK |
-| `a_stock_lib/providers/tushare_quotes.py` | 行情主源（需 `TUSHARE_TOKEN`），从 tracker 原样迁移 |
-| `a_stock_lib/providers/baostock_quotes.py` | 行情 degraded fallback，从 tracker 原样迁移 |
+| `a_stock_lib/providers/tushare_quotes.py` | 行情主源（需 `TUSHARE_TOKEN`），已完成 Phase 3 token 来源、schema、异常分类硬化 |
+| `a_stock_lib/providers/baostock_quotes.py` | 行情 degraded fallback，已完成 Phase 3 登录异常、代码转换、schema 校验硬化 |
 | `a_stock_lib/providers/tushare_fundamentals.py` | 全市场行业分类批量拉取 + 本地 JSON 缓存（30天TTL），全新代码，替代不稳定的 AKShare `stock_individual_info_em` |
 
 ---
@@ -37,7 +39,7 @@ python3 -m build           # 产出版本化 wheel（消费方安装这个，不
 ## 安全红线
 
 - **禁止修改 `~/a-stock-tracker/lib/`** —— 在 Phase 4（tracker 切换）之前，tracker 必须保持零风险敞口，继续用自己本地的 `lib/` 跑生产；本包只做"复制+新增"，不做"挪走"
-- **`TUSHARE_TOKEN` 禁止硬编码** —— 运行时从 `~/a-stock-tracker/.env` 读取（`read_tushare_token()`），路径可通过构造参数覆盖，三个消费方共用同一份 token。**已知不一致**：`tushare_quotes.py`（从 tracker 原样迁移）仍用 `os.environ.get("TUSHARE_TOKEN")` 而非 `read_tushare_token()`——这是 tracker 原有行为，迁移时按"复制不改动"原则保留，记入下方"Phase 3 硬化清单"，不在迁移任务里顺手改
+- **`TUSHARE_TOKEN` 禁止硬编码** —— Provider 的 token 优先级为构造参数显式传入 > 环境变量 `TUSHARE_TOKEN` > `read_tushare_token()` 从 `~/a-stock-tracker/.env` 读取，路径可通过 `env_path` 覆盖，三个消费方共用同一份 token。`tushare_quotes.py` 已在 Phase 3 统一到这个模式。
 - **测试禁止发起真实网络请求** —— `tushare`/`baostock` SDK 在 Provider 内部是懒加载（方法内 `import`，不是模块顶层），测试用注入 `client` 参数的方式 mock，不依赖真实 SDK 包安装
 - **新增函数必须有类型注解，禁止裸 `raise Exception`** —— 失败路径统一收敛成 `MarketDataResult(status="failed", error_code=...)`，不让异常裸露给调用方
 

@@ -6,6 +6,8 @@
 
 A 股投研三系统（`a-stock-tracker`/`a-stock-research`/`a-stock-monitor`）共享的市场数据 Provider 原语包，从 `a-stock-tracker/lib/` 剥离。
 
+当前状态（2026-06-25）：本仓库版本为 `0.1.1`，Phase 1 核心包、Phase 2 research 侧行业 Provider 接入、Phase 3 本包侧硬化均已完成并提交。`a-stock-tracker` 仍未切换到依赖本包，Phase 4 未开始；不要修改 `~/a-stock-tracker/lib/`。
+
 权威文档：
 - 架构决策 → `docs/design/2026-06-22-three-system-restructure-design.md`
 - 任务拆解/验收标准 → `docs/plans/2026-06-23-a-stock-lib-shared-package-plan.md`
@@ -22,7 +24,7 @@ pytest tests/ -v
 ## 全局约束
 
 - **不要修改 `~/a-stock-tracker/lib/`** —— 本包目前处于"从 tracker 复制+新增"阶段，tracker 还没有切换到依赖本包，必须保持零风险敞口
-- **不要硬编码 `TUSHARE_TOKEN`** —— 运行时通过 `read_tushare_token()` 从 `~/a-stock-tracker/.env` 读取。已知例外：`tushare_quotes.py`（从 tracker 原样迁移）仍用 `os.environ.get("TUSHARE_TOKEN")`，是 tracker 原有行为，记入硬化清单，不要在其他任务里顺手改
+- **不要硬编码 `TUSHARE_TOKEN`** —— Provider 的 token 优先级为构造参数显式传入 > 环境变量 `TUSHARE_TOKEN` > `read_tushare_token()` 从 `~/a-stock-tracker/.env` 读取（路径可通过 `env_path` 覆盖）。`tushare_quotes.py` 已在 Phase 3 统一到这个模式。
 - **不要在测试里发起真实网络请求** —— 第三方 SDK（`tushare`/`baostock`）的 import 必须留在方法内部（懒加载），测试通过给 Provider 构造函数传入 mock `client` 参数来隔离
 - **所有新函数要有类型注解，不要裸 `raise Exception`** —— 失败路径统一返回 `MarketDataResult(status="failed", error_code=...)`
 - **新增依赖前先确认必要性**，不要静默引入 `pyproject.toml` 之外的包

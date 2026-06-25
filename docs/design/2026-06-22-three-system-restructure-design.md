@@ -1,8 +1,9 @@
-# A股投研三系统重构设计（已批准，待写实施计划）
+# A股投研三系统重构设计（已批准，实施中）
 
 日期：2026-06-22
+最近状态更新：2026-06-25
 范围：`a-stock-tracker`（独立仓库，35支自动评分管道）/ `a-stock-research` skill（新股研究）/ `a-stock-monitor` skill（持仓监控）
-状态：**架构方案已获用户批准**，下一步是写详细实施计划（writing-plans），尚未动代码
+状态：**架构方案已获用户批准**。Phase 1 核心共享包、Phase 2 research 侧行业 Provider 接入、Phase 3 本包侧硬化均已完成；`a-stock-tracker` 仍未切换到依赖本包，Phase 4 未开始。
 
 ---
 
@@ -181,13 +182,15 @@ Prompt内容单独维护一个版本号（`prompt_hash`，跟评分代码层的`
    **⚠️ 2026-06-23实际执行范围已收窄（用户决定）**：本节描述的Phase 2原计划把"行业Provider替换"和"评分引擎试点"/"证据语法retrofit"绑在一起；实际执行时拆分为：①②(行业Provider替换+diff核验，仅`a-stock-research`，已完成，见README)单独执行；评分引擎试点、证据语法retrofit**改为独立任务分别单开**，不在本次Phase 2范围内。另外，`validate_subjective_evidence`这个函数本身**已经在06-22 commit`421fe2c`里直接实现并上线**（在`a-stock-research`自己的`cache.py`，不经过`a-stock-lib`），这里提到的"retrofit"如果还要做，应理解为"对已上线版本做进一步语法收紧"，不是从零实现。**`a-stock-monitor`接入情况（06-23已查明并处理）**：`a-stock-monitor`没有自己的代码，只有`SKILL.md`，所有数据操作都是直接shell调用`a-stock-research`的`cache.py`/`fetcher.py`——上面这句"a-stock-research/monitor率先把fetcher.py换成调用a-stock-lib"对monitor而言是错误假设，没有独立fetcher可改。实际处理方式：核实monitor的5支持仓在`stock_fundamentals`表里的industry缓存（3支仍是改代码前写入的旧占位符），重新跑`fetcher.py fetch`刷新这5支，确认`portfolio-risk`输出后5支框架推断均无低置信度"?"标记。这不是代码改动，是数据刷新。
 3. **Phase 3 — 共享包打磨**：根据Phase 2暴露的问题修`a-stock-lib`，此时tracker仍未接入，不受影响
 
-   **Phase 3硬化清单（2026-06-23 Task2实施时agy审查发现，原样保留待此阶段统一处理）**：以下4处问题逐行核对后确认**均为tracker `lib/market_data.py`现有生产代码的预存缺陷**，Task2按"先复制不改动"原则原样搬运进`a_stock_lib/market_data.py`，未在搬运时顺手修——避免迁移窗口内新旧包行为出现未经验证的偏差。修复时**两边都要改**（新包+tracker本体），不能只改新包：
+   **2026-06-25更新**：Phase 3 的本包侧硬化已完成并提交（`f51d081 fix: 完成Phase3共享包硬化`），版本升至 `0.1.1`。已覆盖：primary/fallback 双失败信息保留、`MarketDataResult.error_code` Literal 收束、bars 非 DataFrame/缺列校验、`time limit exceeded` 归类为 `TIMEOUT`、Tushare 报价 Provider token 来源统一、BaoStock 登录/查询/代码转换异常屏障。全量测试 `44 passed`，wheel 构建和 scratch venv 安装 smoke 均已验证。按仓库约束，`~/a-stock-tracker/lib/` 未修改；tracker 侧同类预存缺陷仍需在 Phase 4 切换前单独同步处理。
+
+   **Phase 3硬化清单（2026-06-23 Task2实施时agy审查发现，2026-06-25本包侧已完成）**：以下4处问题逐行核对后确认**均为tracker `lib/market_data.py`现有生产代码的预存缺陷**，Task2按"先复制不改动"原则原样搬运进`a_stock_lib/market_data.py`，未在搬运时顺手修——避免迁移窗口内新旧包行为出现未经验证的偏差。当前 `a-stock-lib` 已修复；tracker 本体仍未修改，后续 Phase 4 前需要同步评估：
    - `CompositeMarketDataProvider._fetch`（双方均在`fetch`方法内）：primary和fallback都失败时，直接`return fallback_result`，primary的真实失败原因（如Token失效）被静默吞掉，只剩fallback的报错，排查方向会被带偏
    - `normalize_bars_result`/`_normalize_bars_result`：非`l3_bars`场景只校验`date`/`close`两列，`open`/`high`/`low`缺失不会被拦截，下游若依赖这些列做计算会在更深的调用栈里抛`KeyError`而非在边界处收敛成`MarketDataResult("failed")`；另外入参非`pd.DataFrame`（如上游意外返回list/dict）时`getattr(df, "empty", False)`不会拦截，会在`.rename()`处抛未分类异常
    - `exception_result`/`_exception_result`：错误分类用纯子串匹配，`"time limit exceeded"`会被`"limit" in lowered`误判成`RATE_LIMITED`而非`TIMEOUT`，调用方可能因此做错误的退避重试决策
    - `MarketDataResult.error_code`类型标注是裸`str | None`，未用`Literal`收束到实际的错误码常量集合，类型检查器无法防拼写错误
 
-   **追加（2026-06-23，agy编码规范体检发现，已逐行核对确认均为tracker `lib/tushare_provider.py`/`lib/baostock_provider.py`现有生产代码的预存缺陷，与上面4条同等处理——两边都要改）**：
+   **追加（2026-06-23，agy编码规范体检发现，2026-06-25本包侧已完成）**：以下问题已逐行核对确认均为tracker `lib/tushare_provider.py`/`lib/baostock_provider.py`现有生产代码的预存缺陷。当前 `a-stock-lib` 已修复；tracker 本体仍未修改，后续 Phase 4 前需要同步评估：
    - `tushare_quotes.py:39`（`self.token = os.environ.get("TUSHARE_TOKEN") if token is None else token`）：与`tushare_fundamentals.py`的`read_tushare_token()`读`.env`文件的方式不一致，tracker原有的运行环境靠外部把`TUSHARE_TOKEN`导出成真实环境变量，三个provider的token来源没统一
    - `baostock_quotes.py:115`（`login = client.login()`）：在`try`块（126行起）之外执行，登录阶段真实抛出的异常（非baostock返回的`error_code`字段，而是Python异常）不会被收敛成`MarketDataResult("failed")`，会直接冒泡给调用方
    - `baostock_quotes.py:103`（`to_baostock_index_code(symbol)`）：在进入`_fetch_bars`内部统一`try`块之前调用，非法`symbol`触发的`ValueError`不会被转译
