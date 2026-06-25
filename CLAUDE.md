@@ -67,3 +67,12 @@ python3 -m build           # 产出版本化 wheel（消费方安装这个，不
 **PM 的授权范围**：在本项目（`a-stock-lib`）内，PM 有 commit 的 standing authorization，不需要逐次向用户确认。但以下操作仍属于更高风险层级，动手前必须先说明并等待用户确认：force-push、`git reset --hard`、删除分支、数据库结构变更（本项目目前无数据库）、生产配置改动。这个授权范围不延伸到 `a-stock-tracker` 或其他项目。
 
 **Commit 规范**：延续 `a-stock-tracker` 的风格，`类型: 中文描述`（`feat`/`fix`/`refactor`/`docs`/`chore`）。
+
+
+<!-- ai-collab:routing -->
+## AI协作模式（ai-collab）
+本项目采用 ai-collab 三方协作模式（Claude=PM/架构师，codex=执行，QA工具=审查）。
+新会话只要看到本项目有 `.claude/ai-collab/config.yaml`，对多步骤编码任务默认
+调用 collab-pipeline skill 执行"实现→审查→提交"循环；完成一个完整plan或一批
+任务后调用 collab-retro skill 复盘。配置与历史记录见 `.claude/ai-collab/`。
+<!-- /ai-collab:routing -->
