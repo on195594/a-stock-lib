@@ -5,6 +5,7 @@ import pandas as pd
 from a_stock_lib.market_data import MISSING_COLUMNS, REMOTE_DISCONNECTED, SCHEMA_CHANGED, TIMEOUT, UNKNOWN_ERROR
 from a_stock_lib.providers.baostock_quotes import (
     BaoStockMarketDataProvider,
+    IsolatedBaoStockMarketDataProvider,
     _exception_result,
     _normalize_baostock_bars,
     to_baostock_index_code,
@@ -15,6 +16,11 @@ from a_stock_lib.providers.baostock_quotes import (
 def test_baostock_provider_constructs():
     provider = BaoStockMarketDataProvider()
     assert provider is not None
+
+
+def test_isolated_baostock_provider_constructs():
+    provider = IsolatedBaoStockMarketDataProvider(timeout_seconds=0.5)
+    assert provider.timeout_seconds == 0.5
 
 
 class _LoginResult:
@@ -165,3 +171,59 @@ def test_baostock_context_query_exception_resets_login_state():
         provider.fetch_daily_bars_range("600036", "2026-06-01", "2026-06-23")
 
     assert client.login_count == 2
+
+
+def test_isolated_baostock_provider_returns_runner_result():
+    expected = _normalize_baostock_bars(
+        pd.DataFrame(
+            [
+                {
+                    "date": "2026-06-25",
+                    "open": "36.73",
+                    "high": "36.99",
+                    "low": "36.20",
+                    "close": "36.23",
+                    "volume": "118116225",
+                }
+            ]
+        ),
+        "l3_bars",
+    )
+
+    calls: list[tuple[str, tuple, float]] = []
+
+    def runner(method: str, args: tuple, timeout_seconds: float):
+        calls.append((method, args, timeout_seconds))
+        return expected
+
+    provider = IsolatedBaoStockMarketDataProvider(timeout_seconds=1.5, runner=runner)
+
+    result = provider.fetch_daily_bars_range("600036", "2026-06-25", "2026-06-25")
+
+    assert result == expected
+    assert calls == [("fetch_daily_bars_range", ("600036", "2026-06-25", "2026-06-25"), 1.5)]
+
+
+def test_isolated_baostock_provider_converts_timeout_to_failed_result():
+    def runner(method: str, args: tuple, timeout_seconds: float):
+        raise TimeoutError("BaoStock provider call fetch_l3_bars exceeded 0.1s")
+
+    provider = IsolatedBaoStockMarketDataProvider(timeout_seconds=0.1, runner=runner)
+
+    result = provider.fetch_l3_bars("600036", "2026-06-25", 120)
+
+    assert result.status == "failed"
+    assert result.error_code == TIMEOUT
+    assert "exceeded" in (result.error_message or "")
+
+
+def test_isolated_baostock_provider_converts_runner_exception_to_failed_result():
+    def runner(method: str, args: tuple, timeout_seconds: float):
+        raise RuntimeError("connection reset by peer")
+
+    provider = IsolatedBaoStockMarketDataProvider(runner=runner)
+
+    result = provider.fetch_score_price("600036", "2026-06-25")
+
+    assert result.status == "failed"
+    assert result.error_code == REMOTE_DISCONNECTED

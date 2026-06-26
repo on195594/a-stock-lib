@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
+import multiprocessing
+import queue
 from typing import Any
 
 import pandas as pd
@@ -19,6 +21,7 @@ from a_stock_lib.market_data import (
 
 BAOSTOCK_SOURCE = "baostock.query_history_k_data_plus"
 BAOSTOCK_VOLUME_UNIT = "share"
+DEFAULT_BAOSTOCK_TIMEOUT_SECONDS = 10.0
 
 
 class BaoStockMarketDataProvider:
@@ -174,6 +177,81 @@ class BaoStockMarketDataProvider:
         if getattr(rs, "error_code", "0") != "0":
             raise RuntimeError(getattr(rs, "error_msg", "baostock query failed"))
         return rs
+
+
+class IsolatedBaoStockMarketDataProvider:
+    """BaoStock provider wrapper that hard-times out socket hangs in a child process."""
+
+    source = BAOSTOCK_SOURCE
+
+    def __init__(self, timeout_seconds: float = DEFAULT_BAOSTOCK_TIMEOUT_SECONDS, runner: Any | None = None) -> None:
+        self.timeout_seconds = timeout_seconds
+        self._runner = runner or _run_provider_method_with_timeout
+
+    def __enter__(self) -> IsolatedBaoStockMarketDataProvider:
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        return None
+
+    def fetch_score_price(self, code: str, score_date: str) -> MarketDataResult[float]:
+        return self._call("fetch_score_price", code, score_date)
+
+    def fetch_l3_bars(self, code: str, end_date: str, window: int) -> MarketDataResult[pd.DataFrame]:
+        return self._call("fetch_l3_bars", code, end_date, window)
+
+    def fetch_daily_bars_range(self, code: str, start_date: str, end_date: str) -> MarketDataResult[pd.DataFrame]:
+        return self._call("fetch_daily_bars_range", code, start_date, end_date)
+
+    def fetch_outcome_price(self, code: str, target_date: str) -> MarketDataResult[float]:
+        return self._call("fetch_outcome_price", code, target_date)
+
+    def fetch_index_bars(self, symbol: str) -> MarketDataResult[pd.DataFrame]:
+        return self._call("fetch_index_bars", symbol)
+
+    def _call(self, method: str, *args: Any) -> MarketDataResult[Any]:
+        try:
+            return self._runner(method, args, self.timeout_seconds)
+        except TimeoutError as exc:
+            return MarketDataResult(
+                None,
+                "failed",
+                BAOSTOCK_SOURCE,
+                _now(),
+                error_code=TIMEOUT,
+                error_message=str(exc),
+            )
+        except Exception as exc:
+            return _exception_result(exc)
+
+
+def _run_provider_method_with_timeout(method: str, args: tuple[Any, ...], timeout_seconds: float) -> MarketDataResult[Any]:
+    ctx = multiprocessing.get_context("fork") if "fork" in multiprocessing.get_all_start_methods() else multiprocessing
+    result_queue = ctx.Queue(maxsize=1)
+    process = ctx.Process(target=_baostock_worker, args=(method, args, result_queue))
+    process.start()
+    process.join(timeout_seconds)
+    if process.is_alive():
+        process.terminate()
+        process.join(1)
+        raise TimeoutError(f"BaoStock provider call {method} exceeded {timeout_seconds:.1f}s")
+    try:
+        success, payload = result_queue.get_nowait()
+    except queue.Empty as exc:
+        raise RuntimeError(f"BaoStock provider call {method} exited without returning a result") from exc
+    if success:
+        return payload
+    raise RuntimeError(str(payload))
+
+
+def _baostock_worker(method: str, args: tuple[Any, ...], result_queue: Any) -> None:
+    provider = BaoStockMarketDataProvider()
+    try:
+        result_queue.put((True, getattr(provider, method)(*args)))
+    except Exception as exc:
+        result_queue.put((False, exc))
+    finally:
+        provider.close()
 
 
 def to_baostock_stock_code(code: str) -> str:

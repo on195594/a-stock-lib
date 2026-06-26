@@ -6,7 +6,7 @@
 
 A 股投研三系统（`a-stock-tracker`/`a-stock-research`/`a-stock-monitor`）共享的市场数据 Provider 原语包，从 `a-stock-tracker/lib/` 剥离。
 
-当前状态（2026-06-25）：本仓库版本为 `0.1.1`，Phase 1 核心包、Phase 2 research 侧行业 Provider 接入、Phase 3 本包侧硬化均已完成并提交。`a-stock-tracker` 仍未切换到依赖本包，Phase 4 未开始；不要修改 `~/a-stock-tracker/lib/`。
+当前状态（2026-06-26）：本仓库版本为 `0.1.2`，Phase 1 核心包、Phase 2 research 侧行业 Provider 接入、Phase 3 本包侧硬化、Phase 4 tracker 切换均已完成并提交。当前正在 harden BaoStock fallback，避免 SDK socket hang 阻塞 tracker probe/dry-run。
 
 权威文档：
 - 架构决策 → `docs/design/2026-06-22-three-system-restructure-design.md`
