@@ -1,10 +1,13 @@
 # Phase 4 tracker 切换到 a-stock-lib 计划
 
 日期：2026-06-25
-状态：已执行完成，tracker 已切换到 `a-stock-lib==0.1.1`
-范围：`~/a-stock-tracker/` 消费 `a-stock-lib==0.1.1`，退役 tracker 本地行情 Provider 副本
+最近状态更新：2026-06-26
+状态：已执行完成，tracker 已切换到 `a-stock-lib==0.1.2`
+范围：`~/a-stock-tracker/` 消费 `a-stock-lib==0.1.2`，退役 tracker 本地行情 Provider 副本，并已完成 BaoStock fallback 隔离超时 Provider 硬化。
 
-执行记录：2026-06-25 已在 `~/a-stock-tracker` 完成切换；`lib/market_data.py` 保留 tracker 门禁/cache wrapper，Tushare/BaoStock provider 来自 `a_stock_lib.providers.*`，本地 `lib/tushare_provider.py` 与 `lib/baostock_provider.py` 已删除。验证通过：tracker `pytest tests/ -q` 171 passed、`ruff check .` passed、`mypy` passed、`scripts/check_market_data_readiness.py` READY；a-stock-lib `pytest tests/ -v` 44 passed。agy 复查无 Blocker/High/Medium。
+> **2026-06-26 当前状态补充：** 本文档保留 Phase 4 初始实施计划和历史验收口径。在 Phase 4 切换后，为了隔离 BaoStock SDK socket hang 导致主进程挂死的风险，已将 fallback 报价 Provider 加硬为基于独立子进程与超时控制的 `IsolatedBaoStockMarketDataProvider`，版本 bump 至 `0.1.2`。当前 `a-stock-tracker` 锁定的依赖版本已更新为 `a-stock-lib==0.1.2`。本包全量测试用例数已增至 48 passed。
+
+执行记录（历史）：2026-06-25 已在 `~/a-stock-tracker` 完成切换；`lib/market_data.py` 保留 tracker 门禁/cache wrapper，Tushare/BaoStock provider 来自 `a_stock_lib.providers.*`，本地 `lib/tushare_provider.py` 与 `lib/baostock_provider.py` 已删除。验证通过：tracker `pytest tests/ -q` 171 passed、`ruff check .` passed、`mypy` passed、`scripts/check_market_data_readiness.py` READY；a-stock-lib `pytest tests/ -v` 44 passed。agy 复查无 Blocker/High/Medium。
 
 ## 背景
 

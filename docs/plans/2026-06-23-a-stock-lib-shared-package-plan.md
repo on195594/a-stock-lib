@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 本计划按 PM(Claude)/开发(`codex exec`)/审查(`agy`) 三方协作流水线执行，不使用 superpowers:subagent-driven-development 或 superpowers:executing-plans——PM 把每个 Task 作为独立 contract 派给 `codex exec`，`codex` 写完后 PM 派 `agy` 做对抗审查，`agy` 发现的问题直接打回给 `codex` 修，修完 PM 复查决定是否再打回（最多2轮，2轮仍卡住升级给用户）。Steps 用 checkbox(`- [ ]`)语法追踪。
 
-> **2026-06-25 当前状态补充：** 本文档保留 Phase 1 初始实施合同和历史验收口径，因此下方 task 里的 `0.1.0`、最初测试数量、checkbox 不是最新运行状态。当前仓库实际版本为 `0.1.1`；Phase 1 核心包、Phase 2 research 侧行业 Provider 接入、Phase 3 本包侧硬化均已完成并提交。最新验证结果：`pytest tests/ -v` 为 `44 passed`，`python3 -m build` 成功生成 `dist/a_stock_lib-0.1.1-py3-none-any.whl` / `.tar.gz`，scratch venv 安装 wheel smoke 已通过。`a-stock-tracker` 仍未切换到本包，Phase 4 未开始。
+> **2026-06-26 当前状态补充：** 本文档保留 Phase 1 初始实施合同和历史验收口径，因此下方 task 里的 `0.1.0`、最初测试数量、checkbox 不是最新运行状态。当前仓库最新版本为 `0.1.2`；Phase 1 核心包、Phase 2 research 侧行业 Provider 接入、Phase 3 本包侧硬化、Phase 4 tracker 切换均已完成并锁定/消费 `0.1.2`；且针对 BaoStock fallback 潜在的挂死风险，已完成隔离超时 Provider 加固。最新验证结果：`pytest tests/ -v` 为 `48 passed`，`python3 -m build` 成功生成 `dist/a_stock_lib-0.1.2-py3-none-any.whl` / `.tar.gz`，scratch venv 安装 wheel smoke 已通过。
 
 **Goal:** 新建独立的 `~/a-stock-lib/` Python 包，把 `a-stock-tracker/lib/market_data.py` 里跟数据库无关的 Provider 协议原语（`MarketDataResult`/错误码/`MarketDataProvider` Protocol/`CompositeMarketDataProvider`）**复制**（不挪走、不删除原文件）进去并解耦审计写入耦合，同时把 `tushare_provider.py`/`baostock_provider.py` 两个行情 Provider 实现迁移进来，新增一个全新的 Tushare 基本面 Provider（用 `stock_basic` 接口批量拉取行业分类，替代 `a-stock-research` 里不稳定的 AKShare 接口）。
 
@@ -27,7 +27,7 @@
 ├── pyproject.toml
 ├── .gitignore
 ├── a_stock_lib/
-│   ├── __init__.py          # 当前 __version__ = "0.1.1"；本文 Task 1 初始值是 0.1.0
+│   ├── __init__.py          # 当前 __version__ = "0.1.2"；本文 Task 1 初始值是 0.1.0
 │   ├── market_data.py       # 纯协议：MarketDataResult/错误码/Protocol/CompositeMarketDataProvider
 │   └── providers/
 │       ├── __init__.py
@@ -806,7 +806,7 @@ git commit -m "feat: 新增Tushare stock_basic行业分类批量Provider"
 
 **Interfaces:**
 - Consumes: Task 1-4 全部产出
-- Produces: 历史 Phase 1 产物为 `dist/a_stock_lib-0.1.0-py3-none-any.whl`；当前最新验证产物为 `dist/a_stock_lib-0.1.1-py3-none-any.whl`（后续消费方安装具体版本号的wheel，不是 `-e` 软链接，呼应设计文档6.1节"真正的版本化安装"决策）
+- Produces: 历史 Phase 1 产物为 `dist/a_stock_lib-0.1.0-py3-none-any.whl`；当前最新验证产物为 `dist/a_stock_lib-0.1.2-py3-none-any.whl`（后续消费方安装具体版本号的wheel，不是 `-e` 软链接，呼应设计文档6.1节"真正的版本化安装"决策）
 
 - [ ] **Step 1: 跑全量测试**
 
@@ -815,7 +815,7 @@ cd ~/a-stock-lib && source .venv/bin/activate
 pytest tests/ -v
 ```
 
-Expected: Phase 1 历史口径为 17 passed（Task2的9个 + Task3的3个 + Task4的5个）；当前最新口径为 `44 passed`
+Expected: Phase 1 历史口径为 17 passed（Task2的9个 + Task3的3个 + Task4的5个）；当前最新口径为 `48 passed`
 
 - [ ] **Step 2: 构建wheel**
 
@@ -825,14 +825,14 @@ python3 -m build
 ls dist/
 ```
 
-Expected: Phase 1 历史口径生成 `a_stock_lib-0.1.0-py3-none-any.whl` 和对应的 `.tar.gz`；当前最新口径生成 `a_stock_lib-0.1.1-py3-none-any.whl` 和对应的 `.tar.gz`
+Expected: Phase 1 历史口径生成 `a_stock_lib-0.1.0-py3-none-any.whl` 和对应的 `.tar.gz`；当前最新口径生成 `a_stock_lib-0.1.2-py3-none-any.whl` 和对应的 `.tar.gz`
 
 - [ ] **Step 3: 在一个全新的scratch venv里验证wheel能正常安装+使用（不依赖`-e`软链接，验证"版本化安装"真的可行）**
 
 ```bash
 python3 -m venv /tmp/a_stock_lib_smoke_test
 source /tmp/a_stock_lib_smoke_test/bin/activate
-pip install ~/a-stock-lib/dist/a_stock_lib-0.1.1-py3-none-any.whl
+pip install ~/a-stock-lib/dist/a_stock_lib-0.1.2-py3-none-any.whl
 python3 -c "
 from a_stock_lib.market_data import MarketDataResult
 from a_stock_lib.providers.tushare_fundamentals import TushareFundamentalsProvider
@@ -844,7 +844,7 @@ deactivate
 rm -rf /tmp/a_stock_lib_smoke_test
 ```
 
-Expected: 当前最新口径打印 `import ok, version check:` 和 `0.1.1`，无报错——这一步证明了消费方（tracker/research/monitor）将来可以用具体版本号的wheel安装，不需要依赖源码软链接
+Expected: 当前最新口径打印 `import ok, version check:` 和 `0.1.2`，无报错——这一步证明了消费方（tracker/research/monitor）将来可以用具体版本号的wheel安装，不需要依赖源码软链接
 
 - [ ] **Step 4: Commit dist产物不入库（已在.gitignore排除），但记录这次验证**
 
@@ -859,8 +859,8 @@ git log --oneline
 
 ## 验证方式（整个Plan完成后的总验收）
 
-1. `cd ~/a-stock-lib && pytest tests/ -v` 全绿（2026-06-25 最新结果：`44 passed`）
-2. `python3 -m build` 成功生成 wheel，且能在全新 venv 里 `pip install` 后正常 `import`（2026-06-25 最新版本：`0.1.1`）
+1. `cd ~/a-stock-lib && pytest tests/ -v` 全绿（2026-06-26 最新结果：`48 passed`）
+2. `python3 -m build` 成功生成 wheel，且能在全新 venv 里 `pip install` 后正常 `import`（2026-06-26 最新版本：`0.1.2`）
 3. `cd ~/a-stock-tracker && git status` 确认 `lib/` 目录下没有任何文件被改动（这是本计划的硬约束——tracker 零风险敞口）
 4. `cd ~/a-stock-tracker && pytest tests/ -v` 全绿（证明本计划完全没碰过tracker，原有测试不受影响）
 

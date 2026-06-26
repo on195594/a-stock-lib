@@ -4,7 +4,7 @@
 
 A 股投研三系统（`a-stock-tracker`/`a-stock-research`/`a-stock-monitor`）共享的市场数据 Provider 原语包。从 `a-stock-tracker/lib/` 剥离，目标是消灭三套重复的行情/基本面抓取实现。
 
-**当前状态（2026-06-26）**：本仓库版本为 `0.1.2`。Phase 1 核心包、Phase 2 research 侧行业 Provider 接入、Phase 3 本包侧硬化、Phase 4 tracker 切换均已完成并提交；当前正在 harden BaoStock fallback，避免 SDK socket hang 阻塞 tracker probe/dry-run。
+**当前状态（2026-06-26）**：本仓库版本为 `0.1.2`。Phase 1-4 均已完成并提交；针对 BaoStock fallback 进程挂死风险的隔离超时 Provider 加硬（48 passed）已顺利落地并完成，`a-stock-tracker` 已成功切换并版本锁定为消费 `a-stock-lib==0.1.2`。
 
 **文档指针**：
 - 架构决策 / 为什么这么设计 → `docs/design/2026-06-22-three-system-restructure-design.md`
@@ -38,7 +38,7 @@ python3 -m build           # 产出版本化 wheel（消费方安装这个，不
 
 ## 安全红线
 
-- **禁止修改 `~/a-stock-tracker/lib/`** —— 在 Phase 4（tracker 切换）之前，tracker 必须保持零风险敞口，继续用自己本地的 `lib/` 跑生产；本包只做"复制+新增"，不做"挪走"
+- **禁止直接修改 `~/a-stock-tracker/` 内代码** —— 虽然 tracker 已经完成切换并依赖本包，但因为 tracker 工作区当前有既有未提交改动，在没有 PM 明确授权的情况下，禁止直接修改 tracker。
 - **`TUSHARE_TOKEN` 禁止硬编码** —— Provider 的 token 优先级为构造参数显式传入 > 环境变量 `TUSHARE_TOKEN` > `read_tushare_token()` 从 `~/a-stock-tracker/.env` 读取，路径可通过 `env_path` 覆盖，三个消费方共用同一份 token。`tushare_quotes.py` 已在 Phase 3 统一到这个模式。
 - **测试禁止发起真实网络请求** —— `tushare`/`baostock` SDK 在 Provider 内部是懒加载（方法内 `import`，不是模块顶层），测试用注入 `client` 参数的方式 mock，不依赖真实 SDK 包安装
 - **新增函数必须有类型注解，禁止裸 `raise Exception`** —— 失败路径统一收敛成 `MarketDataResult(status="failed", error_code=...)`，不让异常裸露给调用方

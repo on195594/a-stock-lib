@@ -1,9 +1,9 @@
-# A股投研三系统重构设计（已批准，实施中）
+# A股投研三系统重构设计（已批准且已全面落地）
 
 日期：2026-06-22
-最近状态更新：2026-06-25
+最近状态更新：2026-06-26
 范围：`a-stock-tracker`（独立仓库，35支自动评分管道）/ `a-stock-research` skill（新股研究）/ `a-stock-monitor` skill（持仓监控）
-状态：**架构方案已获用户批准**。Phase 1 核心共享包、Phase 2 research 侧行业 Provider 接入、Phase 3 本包侧硬化均已完成；`a-stock-tracker` 仍未切换到依赖本包，Phase 4 未开始。
+状态：**架构方案已获用户批准且已全面落地**。Phase 1-4 均已执行完成。`a-stock-tracker` 锁定的依赖版本已更新并切至 `a-stock-lib==0.1.2`；同时完成了 BaoStock fallback 隔离超时 Provider（`IsolatedBaoStockMarketDataProvider`）加固，本包测试用例数提升至 48 passed。
 
 ---
 
@@ -196,6 +196,8 @@ Prompt内容单独维护一个版本号（`prompt_hash`，跟评分代码层的`
    - `baostock_quotes.py:103`（`to_baostock_index_code(symbol)`）：在进入`_fetch_bars`内部统一`try`块之前调用，非法`symbol`触发的`ValueError`不会被转译
    - `baostock_quotes.py:_fetch_bars`（105-157行，53行）：超出函数≤50行的规范，混合了懒加载导入/登录鉴权/抓取/finally清理4类职责，建议拆出`_ensure_login()`私有方法
 4. **Phase 4 — tracker切换（放在最后，不是第一步）**：只有共享包被skill侧验证足够稳定后，才让tracker把本地`lib/market_data.py`/基本面fetcher换成调用`a-stock-lib`，退役本地副本；同时决定要不要推全部6框架
+
+   **2026-06-26更新**：Phase 4 已执行完成。`a-stock-tracker` 成功将本地 Provider 逻辑退役，切换并锁定消费 `a-stock-lib==0.1.2` 版本。在此期间，针对 BaoStock SDK socket hang 的主进程挂死风险，已加固开发了基于子进程隔离超时的 `IsolatedBaoStockMarketDataProvider` fallback 行情源，并完成 `0.1.2` 构建、全量测试（`48 passed`）与 scratch venv 安装 smoke 验证。
 
 ---
 
