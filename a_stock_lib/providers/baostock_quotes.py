@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 import multiprocessing
-import queue
+import os
+import pickle
+import tempfile
+import traceback
 from typing import Any
 
 import pandas as pd
@@ -226,32 +229,65 @@ class IsolatedBaoStockMarketDataProvider:
 
 
 def _run_provider_method_with_timeout(method: str, args: tuple[Any, ...], timeout_seconds: float) -> MarketDataResult[Any]:
-    ctx = multiprocessing.get_context("fork") if "fork" in multiprocessing.get_all_start_methods() else multiprocessing
-    result_queue = ctx.Queue(maxsize=1)
-    process = ctx.Process(target=_baostock_worker, args=(method, args, result_queue))
+    ctx = multiprocessing.get_context("spawn")
+    parent_conn, child_conn = ctx.Pipe(duplex=False)
+    process = ctx.Process(target=_baostock_worker, args=(method, args, child_conn))
+    result_path: str | None = None
     process.start()
-    process.join(timeout_seconds)
-    if process.is_alive():
-        process.terminate()
+    try:
+        child_conn.close()
+        if not parent_conn.poll(timeout_seconds):
+            _stop_process(process)
+            raise TimeoutError(f"BaoStock provider call {method} exceeded {timeout_seconds:.1f}s")
+        success, payload = parent_conn.recv()
         process.join(1)
-        raise TimeoutError(f"BaoStock provider call {method} exceeded {timeout_seconds:.1f}s")
-    try:
-        success, payload = result_queue.get_nowait()
-    except queue.Empty as exc:
-        raise RuntimeError(f"BaoStock provider call {method} exited without returning a result") from exc
-    if success:
-        return payload
-    raise RuntimeError(str(payload))
+        if process.is_alive():
+            _stop_process(process)
+        if success:
+            result_path = str(payload)
+            with open(result_path, "rb") as result_file:
+                return pickle.load(result_file)
+        message, child_traceback = payload
+        raise RuntimeError(f"{message}\n{child_traceback}")
+    finally:
+        parent_conn.close()
+        if process.is_alive():
+            _stop_process(process)
+        process.close()
+        if result_path is not None:
+            try:
+                os.unlink(result_path)
+            except OSError:
+                pass
 
 
-def _baostock_worker(method: str, args: tuple[Any, ...], result_queue: Any) -> None:
+def _stop_process(process: multiprocessing.Process) -> None:
+    process.terminate()
+    process.join(1)
+    if process.is_alive():
+        process.kill()
+        process.join(1)
+
+
+def _baostock_worker(method: str, args: tuple[Any, ...], result_conn: Any) -> None:
     provider = BaoStockMarketDataProvider()
+    result_path: str | None = None
     try:
-        result_queue.put((True, getattr(provider, method)(*args)))
+        result = getattr(provider, method)(*args)
+        with tempfile.NamedTemporaryFile(prefix="a_stock_lib_baostock_", suffix=".pickle", delete=False) as result_file:
+            pickle.dump(result, result_file)
+            result_path = result_file.name
+        result_conn.send((True, result_path))
     except Exception as exc:
-        result_queue.put((False, exc))
+        if result_path is not None:
+            try:
+                os.unlink(result_path)
+            except OSError:
+                pass
+        result_conn.send((False, (str(exc), traceback.format_exc())))
     finally:
         provider.close()
+        result_conn.close()
 
 
 def to_baostock_stock_code(code: str) -> str:
