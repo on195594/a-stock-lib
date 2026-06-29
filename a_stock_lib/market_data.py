@@ -76,7 +76,7 @@ class MarketDataProvider(Protocol):
 class CompositeMarketDataProvider:
     """Primary/fallback provider. Fallback results are marked degraded."""
 
-    def __init__(self, primary: MarketDataProvider, fallback: MarketDataProvider | None = None):
+    def __init__(self, primary: MarketDataProvider, fallback: MarketDataProvider | None = None) -> None:
         self.primary = primary
         self.fallback = fallback
 

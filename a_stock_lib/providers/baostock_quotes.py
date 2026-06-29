@@ -318,8 +318,10 @@ def to_baostock_index_code(symbol: str) -> str:
     return to_baostock_stock_code(symbol)
 
 
-def _normalize_baostock_bars(df: Any, purpose: str) -> MarketDataResult[pd.DataFrame]:
-    fetched_at = _now()
+def _check_baostock_df(
+    df: Any, purpose: str, fetched_at: str
+) -> MarketDataResult[pd.DataFrame] | None:
+    """Returns a failed result if df fails validation, None if it passes."""
     if df is None:
         return MarketDataResult(None, "failed", BAOSTOCK_SOURCE, fetched_at, error_code=EMPTY_RESPONSE)
     if not isinstance(df, pd.DataFrame):
@@ -346,6 +348,14 @@ def _normalize_baostock_bars(df: Any, purpose: str) -> MarketDataResult[pd.DataF
             error_code=MISSING_COLUMNS,
             error_message=f"missing columns: {sorted(missing)}",
         )
+    return None
+
+
+def _normalize_baostock_bars(df: Any, purpose: str) -> MarketDataResult[pd.DataFrame]:
+    fetched_at = _now()
+    error = _check_baostock_df(df, purpose, fetched_at)
+    if error is not None:
+        return error
     keep = [col for col in ["date", "open", "high", "low", "close", "volume"] if col in df.columns]
     normalized = df[keep].copy()
     try:
