@@ -4,7 +4,7 @@
 
 A 股投研三系统（`a-stock-tracker`/`a-stock-research`/`a-stock-monitor`）共享的市场数据 Provider 原语包。从 `a-stock-tracker/lib/` 剥离，目标是消灭三套重复的行情/基本面抓取实现。
 
-**当前状态（2026-06-29）**：本仓库版本为 `0.1.2`。Phase 1-4 Provider 层/Provider 硬化/Tracker 切换均已完成并提交（含 BaoStock fallback 进程挂死风险隔离超时加硬，51 passed，`a-stock-tracker` 已版本锁定消费 `a-stock-lib==0.1.2`）。2026-06-29 完成两轮技术债清理：P0（tushare_quotes 裸异常逃逸修复）与 P1（`__init__` 返回类型注解、`_normalize_baostock_bars` 函数拆分）。`contracts.py`（FrameworkDecision/CycleStageAssessment/SubjectiveAssessment 数据类）与 `prompts/` 规范化源代码已明确拆分为独立后续任务，当前版本范围不包含。
+**当前状态（2026-06-29）**：本仓库版本为 `0.1.3`。Phase 1-4 Provider 层/Provider 硬化/Tracker 切换均已完成并提交（含 BaoStock fallback 进程挂死风险隔离超时加硬，61 passed）。2026-06-29 完成三轮技术债清理：P0（tushare_quotes 裸异常逃逸修复）、P1（`__init__` 返回类型注解、`_normalize_baostock_bars` 函数拆分）、Step A（新增 `fetcher_utils.py` 提取 `detect_split_ratio` 共享模块，消除 research/tracker 双份维护，10个测试）。a-stock-tracker（0.1.3）与 a-stock-research（系统 Python 0.1.3）均已完成 import 切换。`contracts.py`（FrameworkDecision/CycleStageAssessment/SubjectiveAssessment 数据类）与 `prompts/` 规范化源代码已明确拆分为独立后续任务，当前版本范围不包含。
 
 **文档指针**：
 - 架构决策 / 为什么这么设计 → `docs/design/2026-06-22-three-system-restructure-design.md`
