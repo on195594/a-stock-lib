@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from a_stock_lib.market_data import MISSING_COLUMNS, RATE_LIMITED, SCHEMA_CHANGED, TIMEOUT
+from a_stock_lib.market_data import MISSING_COLUMNS, RATE_LIMITED, SCHEMA_CHANGED, TIMEOUT, UNKNOWN_ERROR
 from a_stock_lib.providers.tushare_quotes import (
     DAILY_SOURCE,
     TRADE_CAL_SOURCE,
@@ -98,3 +98,30 @@ def test_tushare_trade_calendar_non_dataframe_fails_schema_changed():
     assert result.status == "failed"
     assert result.source == TRADE_CAL_SOURCE
     assert result.error_code == SCHEMA_CHANGED
+
+
+def test_fetch_score_price_rejects_malformed_date():
+    provider = TushareMarketDataProvider(token="fake-token")
+    result = provider.fetch_score_price("600036", "not-a-date")
+    assert result.status == "failed"
+    assert result.error_code == UNKNOWN_ERROR
+    assert result.value is None
+    assert result.error_message is not None
+
+
+def test_fetch_l3_bars_rejects_malformed_date():
+    provider = TushareMarketDataProvider(token="fake-token")
+    result = provider.fetch_l3_bars("600036", "not-a-date", 60)
+    assert result.status == "failed"
+    assert result.error_code == UNKNOWN_ERROR
+    assert result.value is None
+    assert result.error_message is not None
+
+
+def test_fetch_outcome_price_rejects_malformed_date():
+    provider = TushareMarketDataProvider(token="fake-token")
+    result = provider.fetch_outcome_price("600036", "not-a-date")
+    assert result.status == "failed"
+    assert result.error_code == UNKNOWN_ERROR
+    assert result.value is None
+    assert result.error_message is not None

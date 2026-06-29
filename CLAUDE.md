@@ -4,7 +4,7 @@
 
 A 股投研三系统（`a-stock-tracker`/`a-stock-research`/`a-stock-monitor`）共享的市场数据 Provider 原语包。从 `a-stock-tracker/lib/` 剥离，目标是消灭三套重复的行情/基本面抓取实现。
 
-**当前状态（2026-06-26）**：本仓库版本为 `0.1.2`。Phase 1-4 均已完成并提交；针对 BaoStock fallback 进程挂死风险的隔离超时 Provider 加硬（48 passed）已顺利落地并完成，`a-stock-tracker` 已成功切换并版本锁定为消费 `a-stock-lib==0.1.2`。
+**当前状态（2026-06-29）**：本仓库版本为 `0.1.2`。Phase 1-4 Provider 层/Provider 硬化/Tracker 切换均已完成并提交（含 BaoStock fallback 进程挂死风险隔离超时加硬，48 passed，`a-stock-tracker` 已版本锁定消费 `a-stock-lib==0.1.2`）。`contracts.py`（FrameworkDecision/CycleStageAssessment/SubjectiveAssessment 数据类）与 `prompts/` 规范化源代码在 Phase 1 设计中作为候选项提出，已明确拆分为独立后续任务，当前版本范围不包含。
 
 **文档指针**：
 - 架构决策 / 为什么这么设计 → `docs/design/2026-06-22-three-system-restructure-design.md`

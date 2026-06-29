@@ -44,12 +44,16 @@ class TushareMarketDataProvider:
         self._client_factory = client_factory
 
     def fetch_score_price(self, code: str, score_date: str) -> MarketDataResult[float]:
-        start_date = _compact(_parse_date(score_date) - timedelta(days=10))
+        try:
+            _score_dt = _parse_date(score_date)
+        except ValueError as exc:
+            return MarketDataResult(None, "failed", DAILY_SOURCE, _now(), error_code=UNKNOWN_ERROR, error_message=str(exc))
+        start_date = _compact(_score_dt - timedelta(days=10))
         result = self._fetch_daily(code, start_date, _compact(score_date), "score_price")
         if result.value is None or result.value.empty:
             return _scalar_failure(result, DAILY_SOURCE)
         row = result.value.iloc[-1]
-        freshness = (_parse_date(score_date) - _parse_date(str(row["date"]))).days
+        freshness = (_score_dt - _parse_date(str(row["date"]))).days
         return MarketDataResult(
             float(row["close"]),
             "ok" if freshness == 0 else "degraded",
@@ -62,8 +66,12 @@ class TushareMarketDataProvider:
         )
 
     def fetch_l3_bars(self, code: str, end_date: str, window: int) -> MarketDataResult[pd.DataFrame]:
+        try:
+            _end_dt = _parse_date(end_date)
+        except ValueError as exc:
+            return MarketDataResult(None, "failed", DAILY_SOURCE, _now(), error_code=UNKNOWN_ERROR, error_message=str(exc))
         lookback_days = max(365, window * 3)
-        start_date = _compact(_parse_date(end_date) - timedelta(days=lookback_days))
+        start_date = _compact(_end_dt - timedelta(days=lookback_days))
         result = self._fetch_daily(code, start_date, _compact(end_date), "l3_bars")
         if result.value is None:
             return result
@@ -82,12 +90,16 @@ class TushareMarketDataProvider:
         return self._fetch_daily(code, _compact(start_date), _compact(end_date), "l3_bars")
 
     def fetch_outcome_price(self, code: str, target_date: str) -> MarketDataResult[float]:
-        start_date = _compact(_parse_date(target_date) - timedelta(days=10))
+        try:
+            _target_dt = _parse_date(target_date)
+        except ValueError as exc:
+            return MarketDataResult(None, "failed", DAILY_SOURCE, _now(), error_code=UNKNOWN_ERROR, error_message=str(exc))
+        start_date = _compact(_target_dt - timedelta(days=10))
         result = self._fetch_daily(code, start_date, _compact(target_date), "outcome_price")
         if result.value is None or result.value.empty:
             return _scalar_failure(result, DAILY_SOURCE)
         row = result.value.iloc[-1]
-        freshness = (_parse_date(target_date) - _parse_date(str(row["date"]))).days
+        freshness = (_target_dt - _parse_date(str(row["date"]))).days
         return MarketDataResult(
             float(row["close"]),
             "ok" if freshness == 0 else "degraded",
