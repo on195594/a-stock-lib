@@ -66,6 +66,12 @@ def test_compute_fragment_hashes_returns_sha256_for_each_fragment(tmp_path: Path
     }
 
 
+def test_manifest_hashes_match_real_fragment_files() -> None:
+    from a_stock_lib.prompts.manifest import FRAGMENT_HASHES
+
+    assert prompts.compute_fragment_hashes(FRAGMENTS_DIR) == FRAGMENT_HASHES
+
+
 def test_render_skill_md_splices_four_canonical_fragments_and_preserves_unrelated_text(tmp_path: Path) -> None:
     render_prompts = load_render_prompts_module()
     source = tmp_path / "SKILL.md"
@@ -121,6 +127,37 @@ def test_replace_region_raises_value_error_when_marker_missing(content: str, mat
 
     with pytest.raises(ValueError, match=match):
         render_prompts.replace_region(content, "<start>", "<end>", "replacement")
+
+
+@pytest.mark.parametrize(
+    ("content", "match"),
+    [
+        ("before <start> old body <end> after <start>", "start marker is not unique: '<start>'"),
+        (
+            "before <start> old body <end> after <end>",
+            "end marker is not unique after '<start>': '<end>'",
+        ),
+    ],
+)
+def test_replace_region_raises_value_error_when_marker_is_not_unique(content: str, match: str) -> None:
+    render_prompts = load_render_prompts_module()
+
+    with pytest.raises(ValueError, match=match):
+        render_prompts.replace_region(content, "<start>", "<end>", "replacement")
+
+
+def test_write_text_atomic_creates_overwrites_and_removes_temp_file(tmp_path: Path) -> None:
+    render_prompts = load_render_prompts_module()
+    target = tmp_path / "rendered.md"
+
+    render_prompts.write_text_atomic(target, "first content\n")
+
+    assert target.read_text(encoding="utf-8") == "first content\n"
+
+    render_prompts.write_text_atomic(target, "second content\n")
+
+    assert target.read_text(encoding="utf-8") == "second content\n"
+    assert list(tmp_path.glob(f".{target.name}.tmp.*")) == []
 
 
 def test_render_agents_md_strips_frontmatter_rewrites_claude_and_prepends_header(tmp_path: Path) -> None:

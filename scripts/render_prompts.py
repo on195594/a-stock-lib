@@ -132,9 +132,13 @@ def replace_region(content: str, start_marker: str, end_marker: str, replacement
     start = content.find(start_marker)
     if start == -1:
         raise ValueError(f"start marker not found: {start_marker!r}")
+    if content.find(start_marker, start + 1) != -1:
+        raise ValueError(f"start marker is not unique: {start_marker!r}")
     end = content.find(end_marker, start + len(start_marker))
     if end == -1:
         raise ValueError(f"end marker not found after {start_marker!r}: {end_marker!r}")
+    if content.find(end_marker, end + 1) != -1:
+        raise ValueError(f"end marker is not unique after {start_marker!r}: {end_marker!r}")
     return content[:start] + replacement + content[end:]
 
 
