@@ -171,3 +171,46 @@ def test_parse_subjective_assessment_tags_duplicate_category_keeps_first_valid()
 
 def test_parse_subjective_assessment_tags_empty_input_returns_empty_list() -> None:
     assert parse_subjective_assessment_tags("") == []
+
+
+def test_parse_subjective_assessment_tags_inline_chinese_prose_before_category() -> None:
+    text = '本公司的护城河[评级=优；证据="转换成本高";置信度=高]'
+
+    assert parse_subjective_assessment_tags(text) == [
+        SubjectiveAssessment(
+            SubjectiveCategory.MOAT,
+            RatingTier.HIGH,
+            ["转换成本高"],
+            EvidenceConfidence.HIGH,
+        )
+    ]
+
+
+def test_parse_tags_allow_closing_bracket_inside_quoted_text() -> None:
+    cycle = parse_cycle_stage_tag('周期位置[阶段=上行期；依据="需求回升[参考1]"]')
+    subjective = parse_subjective_assessment_tags('护城河[评级=优；证据="转换成本高[参考1]";置信度=高]')
+
+    assert cycle == CycleStageAssessment(CycleStage.UPTREND, "需求回升[参考1]")
+    assert subjective == [
+        SubjectiveAssessment(
+            SubjectiveCategory.MOAT,
+            RatingTier.HIGH,
+            ["转换成本高[参考1]"],
+            EvidenceConfidence.HIGH,
+        )
+    ]
+
+
+def test_parse_tags_allow_newline_inside_quoted_text() -> None:
+    cycle = parse_cycle_stage_tag('周期位置[阶段=上行期；依据="需求回升\n盈利改善"]')
+    subjective = parse_subjective_assessment_tags('护城河[评级=优；证据="转换成本高\n客户粘性强";置信度=高]')
+
+    assert cycle == CycleStageAssessment(CycleStage.UPTREND, "需求回升\n盈利改善")
+    assert subjective == [
+        SubjectiveAssessment(
+            SubjectiveCategory.MOAT,
+            RatingTier.HIGH,
+            ["转换成本高\n客户粘性强"],
+            EvidenceConfidence.HIGH,
+        )
+    ]

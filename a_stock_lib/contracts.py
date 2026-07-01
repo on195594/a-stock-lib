@@ -67,11 +67,11 @@ class SubjectiveAssessment:
     confidence: EvidenceConfidence
 
 
-_CYCLE_TAG_RE = re.compile(r"周期位置\[(?P<body>[^\]]*)\]")
-_CYCLE_BODY_RE = re.compile(r'^\s*阶段=(?P<stage>[^；;]+)[；;]依据="(?P<rationale>.*)"\s*$')
-_SUBJECTIVE_TAG_RE = re.compile(r"(?P<category>[\u4e00-\u9fff]+)\[(?P<body>[^\]]*)\]")
+_CYCLE_TAG_RE = re.compile(r'周期位置\[(?P<body>(?:"[^"]*"|[^\]])*)\]')
+_CYCLE_BODY_RE = re.compile(r'^\s*阶段=(?P<stage>[^；;]+)[；;]依据="(?P<rationale>[\s\S]*)"\s*$')
+_SUBJECTIVE_TAG_RE = re.compile(r'(?P<category>护城河|行业地位|特许经营稀缺性|品牌渠道)\[(?P<body>(?:"[^"]*"|[^\]])*)\]')
 _SUBJECTIVE_BODY_RE = re.compile(
-    r"^\s*评级=(?P<rating>[^；;]+)[；;]证据=(?P<evidence>.*)[；;]置信度=(?P<confidence>[^；;]+)\s*$"
+    r"^\s*评级=(?P<rating>[^；;]+)[；;]证据=(?P<evidence>[\s\S]*)[；;]置信度=(?P<confidence>[^；;]+)\s*$"
 )
 _EVIDENCE_RE = re.compile(r'"(?P<evidence>[^"]*)"')
 _EVIDENCE_LIST_RE = re.compile(r'^\s*"[^"]*"(?:[；;]"[^"]*")*\s*$')
