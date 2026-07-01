@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.2.0] — 2026-07-01
+
+### Added
+- `a_stock_lib/contracts.py`：新增 `FrameworkKey`/`FrameworkDecision`/`CycleStage`/`CycleStageAssessment`/`SubjectiveCategory`/`RatingTier`/`EvidenceConfidence`/`SubjectiveAssessment` 类型，正式收编"LLM 主观判断→代码消费"边界；`parse_cycle_stage_tag`/`parse_subjective_assessment_tags` 提供内嵌结构化标记语法解析，替代 a-stock-research 现有的自由文本填空/正则扫描方案。`FrameworkDecision.confident`/`SubjectiveAssessment.confidence` 目前只解析存储，无下游消费方。
+- `a_stock_lib/prompts/`：canonical prompt 片段（`fragments/*.md`）+ sha256 漂移检测（`manifest.py`）+ `scripts/render_prompts.py` 渲染脚本，产出 Claude 用 `SKILL.md` 等价文本与新 `AGENTS.md`（供 codex/agy 未来跑同一套研究流程）。
+- `tests/test_contracts.py`（18 个）、`tests/test_render_prompts.py`（12 个）。
+
+### Changed
+- `a_stock_lib/__init__.py`、`pyproject.toml`：版本从 `0.1.3` 升至 `0.2.0`（新增公开 API 面，非补丁号）。
+
+### 技术债/加固（collab-pipeline 两轮审查发现并修复）
+- `contracts.py` 正则解析 3 处边界问题：分类名贪婪匹配吞掉前置中文散文导致合法标签被静默丢弃、标签体在引号内 `]` 处误截断、引号内容不支持嵌入换行。
+- `render_prompts.py` 的 `replace_region` 补齐标记唯一性校验（原先只查"是否存在"不查"是否唯一"，标记重复会静默拼接到错误位置）；`write_text_atomic` 与 `manifest.py` 记录的 hash 值补齐回归测试。
+
+全量测试 `92 passed`。
+
 ## [0.1.3] — 2026-06-29
 
 ### Added
