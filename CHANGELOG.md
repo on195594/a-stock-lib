@@ -16,6 +16,12 @@
 
 全量测试 `92 passed`。
 
+### collab-pipeline 执行复盘（Phase 1/2/3a，2026-07-01）
+- **agy 审查质量**：本轮2次独立审查，共10条发现，9条有效/1条不确定（判定"unreliable"未出现）——延续项目历史高可信度记录。Phase 1 复查阶段agy自己提出的第4个发现（未闭合引号跨标签吞噬）经PM实测复现不成立（返回安全空列表），未追加第3轮修复；Phase 3a 审查提出的2条"Critical"经PM核实均非真实阻塞（a-stock-lib安装状态已提前验证；"格"档要求填证据字段不构成矛盾），但审查本身仍揭示了真实的文档滞后问题（a-stock-lib CLAUDE.md/AGENTS.md/README.md 停留在0.1.3表述）。
+- **执行偏差（重复出现）**：`codex:codex-rescue` 子agent本轮7次调度中每次都默认把 `codex exec` 丢进后台就返回，且被追问进度时明确拒绝轮询（"polling...is out of scope for this subagent"）。每次都靠PM追发一条"请同步执行"消息补救，本轮已作为skill-patch提案修复。
+- **真实生产风险的发现方式**：Phase 3a 原计划里"切换后跑 `cache.py clear` 清理"这一步，在真正执行前被PM直接读源码发现远比预期破坏性大（清空整个基本面缓存或某股票全部历史，而非只清当天记录）——不是靠agy审查发现，而是PM在派发任务前的例行代码核对环节主动挖出来的。已改为精确SQL按code+当天日期删除，只影响2条记录。
+- **跨仓库改动的审查覆盖**：Phase 3a 是本轮唯一实际改动生产代码（a-stock-research）的部分，虽然该仓库没有自己的ai-collab配置，仍额外派了一轮agy审查（未走标准record-run/record-review记账，因为项目边界不在a-stock-lib内）。
+
 ## [0.1.3] — 2026-06-29
 
 ### Added
