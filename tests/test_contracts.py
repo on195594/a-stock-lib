@@ -83,6 +83,34 @@ def test_parse_cycle_stage_tag_two_tags_returns_none() -> None:
     assert parse_cycle_stage_tag(text) is None
 
 
+def test_parse_cycle_stage_tag_from_realistic_markdown_report() -> None:
+    text = """
+    ## 第1.5步：周期位置判断
+
+    煤价中枢仍处修复初期，库存去化速度快于需求回落速度。
+    **当前周期位置**：周期位置[阶段=上行期；依据="煤价中枢回升，长协价格稳定，盈利弹性改善"]
+
+    后文还会继续讨论护城河[评级=优；证据="资源禀赋强";置信度=高]。
+    """
+
+    assert parse_cycle_stage_tag(text) == CycleStageAssessment(
+        CycleStage.UPTREND,
+        "煤价中枢回升，长协价格稳定，盈利弹性改善",
+    )
+
+
+def test_parse_cycle_stage_tag_rejects_field_order_variation() -> None:
+    text = '周期位置[依据="煤价回升"；阶段=上行期]'
+
+    assert parse_cycle_stage_tag(text) is None
+
+
+def test_parse_cycle_stage_tag_rejects_chinese_full_width_quotes() -> None:
+    text = "周期位置[阶段=上行期；依据=“煤价回升”]"
+
+    assert parse_cycle_stage_tag(text) is None
+
+
 def test_parse_subjective_assessment_tags_all_categories_valid() -> None:
     text = (
         '护城河[评级=优；证据="转换成本高";"客户粘性强";置信度=高]\n'
@@ -173,6 +201,47 @@ def test_parse_subjective_assessment_tags_empty_input_returns_empty_list() -> No
     assert parse_subjective_assessment_tags("") == []
 
 
+def test_parse_subjective_assessment_tags_from_realistic_markdown_report() -> None:
+    text = """
+    ### 主观项
+
+    - 护城河：护城河[评级=优；证据="客户切换成本高";"毛利率多年稳定";置信度=高]
+    - 行业地位：行业地位[评级=格；证据="市占率仍低于龙头";置信度=中]
+
+    中间可能穿插周期位置[阶段=上行期；依据="行业需求恢复"]，主观解析不应受影响。
+
+    - 特许经营稀缺性：特许经营稀缺性[评级=优；证据="牌照数量受限";置信度=低]
+    - 品牌渠道：品牌渠道[评级=格；证据="渠道覆盖仍在追赶";置信度=高]
+    """
+
+    assert parse_subjective_assessment_tags(text) == [
+        SubjectiveAssessment(
+            SubjectiveCategory.MOAT,
+            RatingTier.HIGH,
+            ["客户切换成本高", "毛利率多年稳定"],
+            EvidenceConfidence.HIGH,
+        ),
+        SubjectiveAssessment(
+            SubjectiveCategory.INDUSTRY_POSITION,
+            RatingTier.LOW,
+            ["市占率仍低于龙头"],
+            EvidenceConfidence.MEDIUM,
+        ),
+        SubjectiveAssessment(
+            SubjectiveCategory.FRANCHISE_SCARCITY,
+            RatingTier.HIGH,
+            ["牌照数量受限"],
+            EvidenceConfidence.LOW,
+        ),
+        SubjectiveAssessment(
+            SubjectiveCategory.BRAND_CHANNEL,
+            RatingTier.LOW,
+            ["渠道覆盖仍在追赶"],
+            EvidenceConfidence.HIGH,
+        ),
+    ]
+
+
 def test_parse_subjective_assessment_tags_inline_chinese_prose_before_category() -> None:
     text = '本公司的护城河[评级=优；证据="转换成本高";置信度=高]'
 
@@ -182,6 +251,62 @@ def test_parse_subjective_assessment_tags_inline_chinese_prose_before_category()
             RatingTier.HIGH,
             ["转换成本高"],
             EvidenceConfidence.HIGH,
+        )
+    ]
+
+
+def test_parse_subjective_assessment_tags_skips_bad_tags_and_keeps_later_valid_tags() -> None:
+    text = (
+        '护城河[评级=优；证据="缺失置信度"]\n'
+        '行业地位[评级=格；证据="市占率较低";置信度=超高]\n'
+        '特许经营稀缺性[评级=优；证据="牌照稀缺";置信度=中]\n'
+        '品牌渠道[评级=格；证据="经销商集中";置信度=低]'
+    )
+
+    assert parse_subjective_assessment_tags(text) == [
+        SubjectiveAssessment(
+            SubjectiveCategory.FRANCHISE_SCARCITY,
+            RatingTier.HIGH,
+            ["牌照稀缺"],
+            EvidenceConfidence.MEDIUM,
+        ),
+        SubjectiveAssessment(
+            SubjectiveCategory.BRAND_CHANNEL,
+            RatingTier.LOW,
+            ["经销商集中"],
+            EvidenceConfidence.LOW,
+        ),
+    ]
+
+
+def test_parse_subjective_assessment_tags_rejects_field_order_variation() -> None:
+    text = (
+        '护城河[证据="转换成本高";评级=优;置信度=高]\n'
+        '行业地位[评级=优；证据="份额第一";置信度=高]'
+    )
+
+    assert parse_subjective_assessment_tags(text) == [
+        SubjectiveAssessment(
+            SubjectiveCategory.INDUSTRY_POSITION,
+            RatingTier.HIGH,
+            ["份额第一"],
+            EvidenceConfidence.HIGH,
+        )
+    ]
+
+
+def test_parse_subjective_assessment_tags_rejects_chinese_full_width_quotes() -> None:
+    text = (
+        "护城河[评级=优；证据=“转换成本高”；置信度=高]\n"
+        '品牌渠道[评级=格；证据="渠道覆盖弱";置信度=中]'
+    )
+
+    assert parse_subjective_assessment_tags(text) == [
+        SubjectiveAssessment(
+            SubjectiveCategory.BRAND_CHANNEL,
+            RatingTier.LOW,
+            ["渠道覆盖弱"],
+            EvidenceConfidence.MEDIUM,
         )
     ]
 
