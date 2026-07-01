@@ -22,6 +22,12 @@
 - **真实生产风险的发现方式**：Phase 3a 原计划里"切换后跑 `cache.py clear` 清理"这一步，在真正执行前被PM直接读源码发现远比预期破坏性大（清空整个基本面缓存或某股票全部历史，而非只清当天记录）——不是靠agy审查发现，而是PM在派发任务前的例行代码核对环节主动挖出来的。已改为精确SQL按code+当天日期删除，只影响2条记录。
 - **跨仓库改动的审查覆盖**：Phase 3a 是本轮唯一实际改动生产代码（a-stock-research）的部分，虽然该仓库没有自己的ai-collab配置，仍额外派了一轮agy审查（未走标准record-run/record-review记账，因为项目边界不在a-stock-lib内）。
 
+### Phase 3b 执行复盘（周期位置判断结构化校验接线，2026-07-01）
+- **首次真实下游消费**：`prompts/` 的 `AGENTS.md` 渲染目标此前只在 scratch 环境验证过等价性，本轮首次真正落地到 a-stock-research 仓库并提交；同时验证了 codex（不只是 agy）会自动发现并遵循 AGENTS.md——此前设计文档只对 agy 做过实测。
+- **落地前发现的跨阶段缺口**：AGENTS.md 落地审查时发现渲染结果会把 canonical fragment 里已经写好的周期位置结构化标签语法带出来，但生产 SKILL.md 和 cache.py 都还没有对应的解析/校验实现（Phase 3b 此前一直被列为"暂不包含"）——是逐区域 diff 出来的，不是先假设没问题就直接提交。
+- **两轮 collab-adversarial-decision 收敛**：`cmd_checklist` vs `cmd_set_analysis` 接入点选择、fail-closed vs warn-only 分级策略，均经 codex+agy 独立视角一致收敛，决策记录见 `decisions.jsonl`。分级策略原定 C 直接 fail-closed / B-D 先观察后切换，用户随后明确要求跳过观察期直接对 B/D 同步 fail-closed。
+- **跨仓库实现边界**：本轮实际代码改动（SKILL.md 语法切换、cmd_set_analysis 校验、AGENTS.md 落地）全部发生在 a-stock-research 仓库（该仓库无自己的 ai-collab 配置），PM 直接实现+自测，未走 collab-pipeline 的 codex 派发循环。
+
 ## [0.1.3] — 2026-06-29
 
 ### Added
