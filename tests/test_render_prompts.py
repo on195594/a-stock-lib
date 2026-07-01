@@ -146,7 +146,13 @@ def test_replace_region_raises_value_error_when_marker_is_not_unique(content: st
         render_prompts.replace_region(content, "<start>", "<end>", "replacement")
 
 
-def test_write_text_atomic_creates_overwrites_and_removes_temp_file(tmp_path: Path) -> None:
+def test_write_text_atomic_creates_and_overwrites_leaving_no_temp_file(tmp_path: Path) -> None:
+    """End-state check only: content is correct and no dangling temp file remains.
+
+    Does not mock ``os.fsync``/``Path.replace`` to prove the write path is
+    internally atomic — that would require intercepting those calls directly,
+    which this test does not attempt.
+    """
     render_prompts = load_render_prompts_module()
     target = tmp_path / "rendered.md"
 
