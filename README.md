@@ -18,6 +18,8 @@ A 股投研三系统（`a-stock-tracker` 评分管道 / `a-stock-research` 新�
 - **contracts.py + prompts/（已完成，2026-07-01）**：新增 `contracts.py` 定义 `FrameworkKey`/`FrameworkDecision`/`CycleStage`/`CycleStageAssessment`/`SubjectiveCategory`/`RatingTier`/`EvidenceConfidence`/`SubjectiveAssessment` 类型 + 标签解析函数，正式收编"LLM 主观判断→代码消费"边界；新增 `prompts/` canonical 源 + `render_prompts.py` 渲染脚本（产出 Claude 用 `SKILL.md` 等价文本 + 新 `AGENTS.md`）。a-stock-research `cache.py` 的主观分项证据校验已硬切换到新解析器（旧 `validate_subjective_evidence` 正则实现已删除）。发布 `0.2.0` 版本，当前全量测试 `99 passed`。
 - **Phase 3b（已完成，2026-07-01同日）**：`prompts/` 渲染的 `AGENTS.md` 首次真正落地到 a-stock-research 并验证 codex 自动读取（此前只验证过 agy）；`contracts.parse_cycle_stage_tag` 接入 a-stock-research 的 `cmd_set_analysis`（覆盖 C/D/B 全部必做框架，均 fail-closed），SKILL.md 周期位置区域同步完成语法切换。这部分改动全部发生在 a-stock-research 仓库，本仓库代码未变。`cmd_checklist` 里 C 框架的 warn-only 提前反馈 UX 仍是 stretch，未实施。详见 [`CHANGELOG.md`](CHANGELOG.md)。
 
+三项目统一下一步计划见 [`docs/plans/2026-07-01-three-project-next-work-plan.md`](docs/plans/2026-07-01-three-project-next-work-plan.md)。
+
 ## 包结构
 
 ```
