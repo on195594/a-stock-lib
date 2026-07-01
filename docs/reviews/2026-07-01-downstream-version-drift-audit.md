@@ -5,20 +5,20 @@
 
 ## 结论
 
-当前最大漂移不是运行时 import，而是下游状态文档和安装说明滞后：
+本审计最初发现的最大漂移不是运行时 import，而是下游状态文档和安装说明滞后：
 
-- `a-stock-tracker` 运行依赖已锁 `a-stock-lib==0.1.3`，但多份当前状态文档仍写 `0.1.2`。
-- `a-stock-research` 已真实消费 `a-stock-lib==0.2.0` 的 `contracts.py` 边界，但 `requirements.txt` 安装注释仍写历史 wheel `0.1.0`。
+- `a-stock-tracker` 运行依赖曾锁 `a-stock-lib==0.1.3`，但多份当前状态文档仍写 `0.1.2`；现已统一升级到 `0.2.0`。
+- `a-stock-research` 已真实消费 `a-stock-lib==0.2.0` 的 `contracts.py` 边界，`requirements.txt` 安装注释曾写历史 wheel `0.1.0`；现已同步到 `0.2.0`。
 - `a-stock-monitor` 没有直接消费 `a-stock-lib`；它通过 `a-stock-research/cache.py` 间接使用 research 的缓存/持仓工具链。
 
-这些漂移目前不构成运行阻塞，但会误导新环境部署和后续接手判断。建议先做下游文档-only 修复，再单独评估 tracker 是否从 `0.1.3` 升级到 `0.2.0`。
+这些漂移未构成运行阻塞，但会误导新环境部署和后续接手判断；本轮已按用户授权统一到当前最新版本 `0.2.0`。
 
 ## 当前事实
 
 | 系统 | 当前事实 | 证据 |
 |---|---|---|
 | `a-stock-lib` | 最新版本 `0.2.0`，本仓库全量测试当前为 `99 passed` | `pyproject.toml` / `a_stock_lib/__init__.py`；本轮 `pytest tests/ -v` |
-| `a-stock-tracker` | 依赖锁定 `a-stock-lib==0.1.3`，使用本地 wheel path | `/home/lin/a-stock-tracker/requirements.txt:4-5` |
+| `a-stock-tracker` | 依赖锁定 `a-stock-lib==0.2.0`，使用本地 wheel path | `/home/lin/a-stock-tracker/requirements.txt:4-5` |
 | `a-stock-tracker` | 生产代码消费本包 Provider、协议原语和 `detect_split_ratio` | `/home/lin/a-stock-tracker/lib/market_data.py:9,121-133`；`/home/lin/a-stock-tracker/lib/fetcher.py:16` |
 | `a-stock-research` | `cache.py` 直接消费 `parse_subjective_assessment_tags` / `parse_cycle_stage_tag` | `/home/lin/.claude/skills/a-stock-research/cache.py:48,529,548` |
 | `a-stock-research` | `fetcher.py` 消费 `detect_split_ratio` 和 `TushareFundamentalsProvider` | `/home/lin/.claude/skills/a-stock-research/fetcher.py:17,169,460,479` |
@@ -31,9 +31,9 @@
 
 | 系统 | 漂移 | 建议动作 |
 |---|---|---|
-| `a-stock-research` | `requirements.txt` 注释仍建议安装 `a_stock_lib-0.1.0-py3-none-any.whl`，与当前 `0.2.0` 消费状态不一致 | 改成不写死版本的说明，或更新为 `0.2.0`；更推荐不写死版本，避免再次漂移 |
-| `a-stock-tracker` | 当前依赖已是 `0.1.3`，但 `README.md`、`CLAUDE.md`、`docs/runbooks/market-data-provider-recovery.md`、`docs/project-status.md`、`docs/evolution-roadmap.md` 当前状态表仍写 `0.1.2` | 文档-only 同步到 `0.1.3`，并注明尚未升级到本包最新 `0.2.0` |
-| `a-stock-lib` | `README.md` Phase 4 行仍写 tracker 锁定 `0.1.2`，与后续 `0.1.3` 技术债清理后的事实不一致 | 在本仓库 README 当前状态段落同步为 `0.1.3` |
+| `a-stock-research` | `requirements.txt` 注释曾建议安装 `a_stock_lib-0.1.0-py3-none-any.whl`，与当前 `0.2.0` 消费状态不一致 | 已同步到 `0.2.0` |
+| `a-stock-tracker` | 当前依赖曾是 `0.1.3`，但 `README.md`、`CLAUDE.md`、`docs/runbooks/market-data-provider-recovery.md`、`docs/project-status.md`、`docs/evolution-roadmap.md` 当前状态表仍写 `0.1.2` | 已同步到 `0.2.0` |
+| `a-stock-lib` | `README.md` Phase 4 行仍写 tracker 锁定 `0.1.2`，与后续升级事实不一致 | 已同步到 `0.2.0` |
 
 ### P2：历史记录保留原文
 
@@ -50,14 +50,13 @@
 
 ## 后续建议
 
-1. 先在本仓库修正 `README.md` 的 tracker 版本状态，范围最小且无需跨仓库授权。
-2. 申请授权对 `a-stock-research` 做文档-only 修复：将 `requirements.txt` 的 `0.1.0` wheel 注释改为不写死版本的安装说明。
-3. 申请授权对 `a-stock-tracker` 做文档-only 修复：同步当前状态文档中的 `a-stock-lib==0.1.2` 为 `0.1.3`，保留历史记录原文。
-4. 另开任务评估 tracker 是否升级到 `a-stock-lib==0.2.0`。这应包含 wheel 构建、tracker venv 安装、tracker 全量测试，而不是混在文档清理里顺手做。
+1. 后续发布本包新版本时，同步更新 tracker `requirements.txt` 与当前状态文档。
+2. 继续保留历史计划/复盘中的当时版本号，不做追溯改写。
+3. 若后续要让 research 的安装说明避免再次漂移，可把精确 wheel 文件名改为 `<version>` 模板。
 
 ## Subagent 核查记录
 
 本审计使用两个只读 explorer subagent 并行核查：
 
-- tracker explorer：确认 `/home/lin/a-stock-tracker/requirements.txt:5` 锁 `a-stock-lib==0.1.3`，并列出当前状态文档中的 `0.1.2` 漂移。
-- research/monitor explorer：确认 research `cache.py` / `fetcher.py` 的 `a_stock_lib` 消费点、`requirements.txt` 的 `0.1.0` 注释漂移，以及 monitor 仅通过 research `cache.py` 间接消费。
+- tracker explorer：确认升级前 `/home/lin/a-stock-tracker/requirements.txt:5` 锁 `a-stock-lib==0.1.3`，并列出当前状态文档中的 `0.1.2` 漂移。
+- research/monitor explorer：确认 research `cache.py` / `fetcher.py` 的 `a_stock_lib` 消费点、升级前 `requirements.txt` 的 `0.1.0` 注释漂移，以及 monitor 仅通过 research `cache.py` 间接消费。

@@ -6,7 +6,7 @@
 
 A 股投研三系统（`a-stock-tracker`/`a-stock-research`/`a-stock-monitor`）共享的市场数据 Provider 原语包，从 `a-stock-tracker/lib/` 剥离。
 
-当前状态（2026-07-01）：本仓库版本为 `0.2.0`。Phase 1-4（核心包/research行业Provider接入/本包硬化/tracker切换）均已完成并提交，含 BaoStock fallback 进程挂死风险隔离超时加固。2026-06-29 完成三轮技术债清理（P0/P1/Step A，详见 CHANGELOG）。2026-07-01 完成 `contracts.py`（LLM输出→代码消费边界类型+标签解析）与 `prompts/` canonical 源+渲染脚本，发布 `0.2.0`；a-stock-research `cache.py` 已硬切换主观分项证据校验到新解析器（旧 `validate_subjective_evidence` 已删除）。全量测试 `92 passed`。a-stock-tracker（0.1.3，尚未升级）与 a-stock-research（系统 Python 0.2.0）均已完成 import 切换。
+当前状态（2026-07-01）：本仓库版本为 `0.2.0`。Phase 1-4（核心包/research行业Provider接入/本包硬化/tracker切换）均已完成并提交，含 BaoStock fallback 进程挂死风险隔离超时加固。2026-06-29 完成三轮技术债清理（P0/P1/Step A，详见 CHANGELOG）。2026-07-01 完成 `contracts.py`（LLM输出→代码消费边界类型+标签解析）与 `prompts/` canonical 源+渲染脚本，发布 `0.2.0`；a-stock-research `cache.py` 已硬切换主观分项证据校验到新解析器（旧 `validate_subjective_evidence` 已删除）。a-stock-tracker 与 a-stock-research 均已升级并消费 `a-stock-lib==0.2.0`。全量测试 `99 passed`。
 
 Phase 3b（周期位置判断结构化校验接线，2026-07-01同日完成）：`prompts/` 渲染的 `AGENTS.md` 首次真正落地到 a-stock-research 并验证 codex 会自动读取（此前只验证过 agy）；`contracts.parse_cycle_stage_tag` 已接入 a-stock-research 的 `cmd_set_analysis`（不是 `cmd_checklist`——`cmd_checklist` 只对 A/C/F 框架生效，而周期位置判断必做的是 C/D/B，二者交集仅 C 一个框架，接 checklist 无法形成对 B/D 的真正约束），C/D/B 框架均为 fail-closed。这部分代码改动全部发生在 a-stock-research 仓库，本仓库自身代码未变。`cmd_checklist` 里 C 框架的 warn-only 提前反馈 UX 仍标记为 stretch，未实施。
 

@@ -3,7 +3,7 @@
 日期：2026-06-22
 最近状态更新：2026-07-01
 范围：`a-stock-tracker`（独立仓库，35支自动评分管道）/ `a-stock-research` skill（新股研究）/ `a-stock-monitor` skill（持仓监控）
-状态：**架构方案已获用户批准且已全面落地**。Phase 1-4 均已执行完成；后续技术债清理、`contracts.py` + `prompts/` canonical 源、Phase 3b 周期位置结构化校验接线也已完成。当前本仓库版本为 `0.2.0`，全量测试 `92 passed`。`a-stock-tracker` 已切至本包 Provider（当前仍锁定 `a-stock-lib==0.1.3`，尚未升级到 `0.2.0`）；`a-stock-research` 已安装并消费系统 Python 中的 `a-stock-lib==0.2.0`。
+状态：**架构方案已获用户批准且已全面落地**。Phase 1-4 均已执行完成；后续技术债清理、`contracts.py` + `prompts/` canonical 源、Phase 3b 周期位置结构化校验接线也已完成。当前本仓库版本为 `0.2.0`，全量测试 `99 passed`。`a-stock-tracker` 已切至本包 Provider 并锁定 `a-stock-lib==0.2.0`；`a-stock-research` 已安装并消费系统 Python 中的 `a-stock-lib==0.2.0`。
 
 ---
 
