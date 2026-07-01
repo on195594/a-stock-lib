@@ -8,3 +8,4 @@ skill_patch:
   auto_apply: false
 project:
   doc_files: [TODOS.md, CHANGELOG.md]
+  status_files: [CLAUDE.md, AGENTS.md, README.md]
