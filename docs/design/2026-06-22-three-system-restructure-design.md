@@ -1,9 +1,9 @@
 # A股投研三系统重构设计（已批准且已全面落地）
 
 日期：2026-06-22
-最近状态更新：2026-06-26
+最近状态更新：2026-07-01
 范围：`a-stock-tracker`（独立仓库，35支自动评分管道）/ `a-stock-research` skill（新股研究）/ `a-stock-monitor` skill（持仓监控）
-状态：**架构方案已获用户批准且已全面落地**。Phase 1-4 均已执行完成。`a-stock-tracker` 锁定的依赖版本已更新并切至 `a-stock-lib==0.1.2`；同时完成了 BaoStock fallback 隔离超时 Provider（`IsolatedBaoStockMarketDataProvider`）加固，本包测试用例数提升至 48 passed。
+状态：**架构方案已获用户批准且已全面落地**。Phase 1-4 均已执行完成；后续技术债清理、`contracts.py` + `prompts/` canonical 源、Phase 3b 周期位置结构化校验接线也已完成。当前本仓库版本为 `0.2.0`，全量测试 `92 passed`。`a-stock-tracker` 已切至本包 Provider（当前仍锁定 `a-stock-lib==0.1.3`，尚未升级到 `0.2.0`）；`a-stock-research` 已安装并消费系统 Python 中的 `a-stock-lib==0.2.0`。
 
 ---
 

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 本计划按 PM(Claude)/开发(`codex exec`)/审查(`agy`) 三方协作流水线执行，不使用 superpowers:subagent-driven-development 或 superpowers:executing-plans——PM 把每个 Task 作为独立 contract 派给 `codex exec`，`codex` 写完后 PM 派 `agy` 做对抗审查，`agy` 发现的问题直接打回给 `codex` 修，修完 PM 复查决定是否再打回（最多2轮，2轮仍卡住升级给用户）。Steps 用 checkbox(`- [ ]`)语法追踪。
 
-> **2026-06-26 当前状态补充：** 本文档保留 Phase 1 初始实施合同和历史验收口径，因此下方 task 里的 `0.1.0`、最初测试数量、checkbox 不是最新运行状态。当前仓库最新版本为 `0.1.2`；Phase 1 核心包、Phase 2 research 侧行业 Provider 接入、Phase 3 本包侧硬化、Phase 4 tracker 切换均已完成并锁定/消费 `0.1.2`；且针对 BaoStock fallback 潜在的挂死风险，已完成隔离超时 Provider 加固。最新验证结果：`pytest tests/ -v` 为 `48 passed`，`python3 -m build` 成功生成 `dist/a_stock_lib-0.1.2-py3-none-any.whl` / `.tar.gz`，scratch venv 安装 wheel smoke 已通过。
+> **2026-07-01 当前状态补充：** 本文档保留 Phase 1 初始实施合同和历史验收口径，因此下方 task 里的 `0.1.0`、最初测试数量、checkbox 不是最新运行状态。当前仓库最新版本为 `0.2.0`；Phase 1 核心包、Phase 2 research 侧行业 Provider 接入、Phase 3 本包侧硬化、Phase 4 tracker 切换、2026-06-29 技术债清理、`contracts.py` + `prompts/` canonical 源、Phase 3b 周期位置结构化校验接线均已完成。最新验证结果：`pytest tests/ -v` 为 `92 passed`。历史 wheel/scratch smoke 验证记录见 `CHANGELOG.md`；本文正文的旧版本号保留为当时执行合同，不代表当前状态。
 
 **Goal:** 新建独立的 `~/a-stock-lib/` Python 包，把 `a-stock-tracker/lib/market_data.py` 里跟数据库无关的 Provider 协议原语（`MarketDataResult`/错误码/`MarketDataProvider` Protocol/`CompositeMarketDataProvider`）**复制**（不挪走、不删除原文件）进去并解耦审计写入耦合，同时把 `tushare_provider.py`/`baostock_provider.py` 两个行情 Provider 实现迁移进来，新增一个全新的 Tushare 基本面 Provider（用 `stock_basic` 接口批量拉取行业分类，替代 `a-stock-research` 里不稳定的 AKShare 接口）。
 
