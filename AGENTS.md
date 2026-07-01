@@ -6,7 +6,7 @@
 
 A 股投研三系统（`a-stock-tracker`/`a-stock-research`/`a-stock-monitor`）共享的市场数据 Provider 原语包，从 `a-stock-tracker/lib/` 剥离。
 
-当前状态（2026-06-26）：本仓库版本为 `0.1.2`，Phase 1 核心包、Phase 2 research 侧行业 Provider 接入、Phase 3 本包侧硬化、Phase 4 tracker 切换（锁定/消费 0.1.2）均已完成并提交。针对 BaoStock fallback 潜在进程挂死风险的隔离超时 Provider 加固（48 passed）已顺利落地并完成。
+当前状态（2026-06-29）：本仓库版本为 `0.1.3`。Phase 1-4（核心包/research行业Provider接入/本包硬化/tracker切换）均已完成并提交，含 BaoStock fallback 进程挂死风险隔离超时加固。2026-06-29 完成三轮技术债清理：P0（tushare_quotes 裸异常逃逸修复）、P1（`__init__` 返回类型注解、`_normalize_baostock_bars` 函数拆分）、Step A（新增 `fetcher_utils.py` 提取 `detect_split_ratio` 共享模块，消除 research/tracker 双份维护）。全量测试 `61 passed`。a-stock-tracker（0.1.3）与 a-stock-research（系统 Python 0.1.3）均已完成 import 切换。`contracts.py`/`prompts/` 规范化已明确拆分为独立后续任务，当前版本范围不包含。
 
 权威文档：
 - 架构决策 → `docs/design/2026-06-22-three-system-restructure-design.md`
