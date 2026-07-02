@@ -80,19 +80,28 @@
   授权前禁止碰。
 - 不提交 `.env`/密钥/凭证/临时文件。
 
-## 项目现状（2026-07-01）
+## 项目现状（2026-07-02）
 
 版本 `0.2.0`。Phase 1-4（Provider 层/硬化/tracker 切换）、`contracts.py` +
 `prompts/` 渲染脚本、Phase 3b（周期位置判断结构化校验，接在 a-stock-research
-的 `cmd_set_analysis`，C/D/B 框架均 fail-closed）均已完成。本仓库全量测试
-`92 passed`（a-stock-research 那边是它自己仓库的测试）。`collab-retro` 刚新增
-"状态文档对齐检查"（Output 1b，config 的 `project.status_files`），本项目已
-声明 `CLAUDE.md`/`AGENTS.md`/`README.md` 三个文件启用它——以后跑 `collab-retro`
-时它会自动检查这三个文件的"当前状态"段落是否过时，你不用再靠人工发现。
+的 `cmd_set_analysis`，C/D/B 框架均 fail-closed）均已完成。本仓库全量测试当前
+基线为 `99 passed`。
 
-唯一明确标记为"暂不做"的遗留项：`cmd_checklist` 里 C 框架的 warn-only 提前
-反馈 UX（Phase 3b 计划里的 stretch 项，非必须交付项，一直没人要求做，不代表
-遗漏）。
+跨项目当前状态：a-stock-tracker 已锁定 `a-stock-lib==0.2.0`，Phase 6 仍保持
+report-only；2026-07-02 已把 weekly PM loop 自动化为每周一 09:30 cron，检查
+weekly/daily/outcome 日志、`READY_CRON` 和 `accuracy-report`，并通过 Telegram bot
+发送摘要（tracker commit `f181010`，验证 `211 passed, 1 skipped`）。该任务已经按
+"涉及 cron/Telegram 必须单独确认"的边界写 spec、经 agy 独立审查 PASS 后实现并
+安装 crontab。
+
+`collab-retro` 刚新增"状态文档对齐检查"（Output 1b，config 的
+`project.status_files`），本项目已声明 `CLAUDE.md`/`AGENTS.md`/`README.md` 三个
+文件启用它——以后跑 `collab-retro` 时它会自动检查这三个文件的"当前状态"段落是否
+过时，你不用再靠人工发现。
+
+当前明确遗留项：a-stock-research 的 PM/agent CLI 数据库路径防呆仍待设计，原因是
+历史上绕开 pytest 的 CLI smoke test 误写过生产 `cache.db`。`cmd_checklist` 里 C
+框架的 warn-only 提前反馈 UX 已于 2026-07-02 在 research 侧完成，不再是遗留项。
 
 ## 文档指针
 
