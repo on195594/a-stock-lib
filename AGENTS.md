@@ -13,6 +13,7 @@ Phase 3b（周期位置判断结构化校验接线，2026-07-01同日完成）�
 权威文档：
 - 架构决策 → `docs/design/2026-06-22-three-system-restructure-design.md`
 - 任务拆解/验收标准 → `docs/plans/2026-06-23-a-stock-lib-shared-package-plan.md`
+- 发版全流程固定清单 → `docs/RELEASE_CHECKLIST.md`
 
 ## 运行与测试
 
