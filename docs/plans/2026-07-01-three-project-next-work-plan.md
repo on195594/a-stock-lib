@@ -30,7 +30,7 @@ Owner：Hermes PM
 | P1 | C 框架 checklist 提前反馈 | `a-stock-research` | 2026-07-02 已实施：`cmd_checklist` 对 C 框架缺失周期标签做 warn-only 提示；B/D 仍由 `cmd_set_analysis` fail-closed | 用户在 checklist 阶段可提前看到 C 框架周期标签缺失提示 |
 | P1 | parser 容错策略 spec | `a-stock-lib` → `a-stock-research` | 2026-07-02 已定 strict-v1：不支持空格、全角括号/引号等变体；research 不补临时正则 | spec 已落地，后续若放宽必须先改 `a-stock-lib/contracts.py` 与对抗测试 |
 | P1 | `watchlist-refresh` 超时保护 | `a-stock-research` | 2026-07-02 已实施：cache 命令外层 timeout、单股 Claude `timeout -k` 强杀兜底、bash 测试覆盖 | 脚本有外层 timeout/退出码测试，真实 cron 风险被隔离 |
-| P2 | 数据库路径防呆 | `a-stock-research` | CLI smoke test 曾误写生产库；需要减少 agent/PM 手工操作误用默认 `cache.db` 的概率 | 非 pytest CLI 操作前能明确显示或覆盖数据库路径 |
+| P2 | 数据库路径防呆 | `a-stock-research` | 2026-07-02 已完成：`cache.py` CLI 入口派发命令前把解析到的 `DB_PATH` 打印到 stderr（commit `b99fa11`），覆盖机制仍是既有 `CACHE_DB_PATH` 环境变量；本仓库首次初始化 ai-collab 配置并走 collab-pipeline（codex 因跨仓库 sandbox 写入限制被拒绝，PM 直接实现，codex-self-review 审查 0 发现） | 非 pytest CLI 操作前能明确显示或覆盖数据库路径 |
 | P2 | release checklist 固化 | `a-stock-lib` | 2026-07-02 已完成：`docs/RELEASE_CHECKLIST.md` 固化 build wheel、安装 tracker venv、安装 research Python、运行消费方测试、更新文档全流程，含消费方现状表格 | 下次 `0.2.x` 发布可按清单执行，减少 downstream drift |
 
 ## 暂不推进
