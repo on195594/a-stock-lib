@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0] — 2026-07-14
+
+- 新增 `ValidatedRealtimeQuoteProvider`：新浪主源失败后要求东方财富与腾讯在交易日、120秒盘中时效及0.3%价格差内双源一致，否则 fail-closed。
+- `contracts.py` 新增六框架主观展示项到标准 `SubjectiveCategory` 的语义映射。
+- canonical prompts 收窄 B 框架为银行，并补充保险/券商量化拒绝、D 框架 incomplete 评分语义。
+- 新接口为增量能力；既有 Provider API 与主/备源行为保持不变。全量测试 `126 passed`。
+
 ## [0.2.0] — 2026-07-01
 
 ### Added

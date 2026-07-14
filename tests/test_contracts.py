@@ -11,9 +11,19 @@ from a_stock_lib.contracts import (
     RatingTier,
     SubjectiveAssessment,
     SubjectiveCategory,
+    FRAMEWORK_SUBJECTIVE_CATEGORY_MAP,
+    required_subjective_categories,
     parse_cycle_stage_tag,
     parse_subjective_assessment_tags,
 )
+
+
+def test_framework_subjective_display_names_map_to_normalized_categories() -> None:
+    assert FRAMEWORK_SUBJECTIVE_CATEGORY_MAP[FrameworkKey.C]['储量竞争力'] is SubjectiveCategory.MOAT
+    assert FRAMEWORK_SUBJECTIVE_CATEGORY_MAP[FrameworkKey.E]['品牌/渠道'] is SubjectiveCategory.BRAND_CHANNEL
+    assert FRAMEWORK_SUBJECTIVE_CATEGORY_MAP[FrameworkKey.F]['订单能见度/客户留存'] is SubjectiveCategory.MOAT
+    for framework in FrameworkKey:
+        assert len(required_subjective_categories(framework)) == 2
 
 
 def test_contract_enums_and_dataclasses_construct() -> None:

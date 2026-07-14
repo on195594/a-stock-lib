@@ -47,6 +47,43 @@ class SubjectiveCategory(str, Enum):
     BRAND_CHANNEL = "品牌渠道"
 
 
+# Framework prose uses different business labels for the same normalized
+# quality dimension.  Downstream validators must compare the parsed enum set,
+# not the display strings emitted by checklist/framework documents.
+FRAMEWORK_SUBJECTIVE_CATEGORY_MAP: dict[FrameworkKey, dict[str, SubjectiveCategory]] = {
+    FrameworkKey.A: {
+        "护城河": SubjectiveCategory.MOAT,
+        "行业地位": SubjectiveCategory.INDUSTRY_POSITION,
+    },
+    FrameworkKey.B: {
+        "护城河": SubjectiveCategory.MOAT,
+        "行业地位": SubjectiveCategory.INDUSTRY_POSITION,
+    },
+    FrameworkKey.C: {
+        "储量竞争力": SubjectiveCategory.MOAT,
+        "行业地位": SubjectiveCategory.INDUSTRY_POSITION,
+    },
+    FrameworkKey.D: {
+        "特许经营稀缺性": SubjectiveCategory.FRANCHISE_SCARCITY,
+        "行业地位": SubjectiveCategory.INDUSTRY_POSITION,
+    },
+    FrameworkKey.E: {
+        "品牌/渠道": SubjectiveCategory.BRAND_CHANNEL,
+        "行业地位": SubjectiveCategory.INDUSTRY_POSITION,
+    },
+    FrameworkKey.F: {
+        "订单能见度/客户留存": SubjectiveCategory.MOAT,
+        "行业地位": SubjectiveCategory.INDUSTRY_POSITION,
+    },
+}
+
+
+def required_subjective_categories(framework: FrameworkKey | str) -> frozenset[SubjectiveCategory]:
+    """Return normalized subjective categories required by a framework."""
+    key = framework if isinstance(framework, FrameworkKey) else FrameworkKey(framework.upper())
+    return frozenset(FRAMEWORK_SUBJECTIVE_CATEGORY_MAP[key].values())
+
+
 class RatingTier(str, Enum):
     HIGH = "优档"
     LOW = "格档"

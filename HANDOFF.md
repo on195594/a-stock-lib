@@ -80,12 +80,11 @@
   授权前禁止碰。
 - 不提交 `.env`/密钥/凭证/临时文件。
 
-## 项目现状（2026-07-02）
+## 项目现状（2026-07-14）
 
-版本 `0.2.0`。Phase 1-4（Provider 层/硬化/tracker 切换）、`contracts.py` +
-`prompts/` 渲染脚本、Phase 3b（周期位置判断结构化校验，接在 a-stock-research
-的 `cmd_set_analysis`，C/D/B 框架均 fail-closed）均已完成。本仓库全量测试当前
-基线为 `99 passed`。
+版本 `0.3.0`。新增 fail-closed 复合实时行情 Provider、六框架主观语义映射，并由
+a-stock-research 接入；既有 Provider 接口与行为保持兼容。本仓库全量测试当前基线
+为 `126 passed`。
 
 跨项目当前状态：a-stock-tracker 已锁定 `a-stock-lib==0.2.0`，Phase 6 仍保持
 report-only；2026-07-02 已把 weekly PM loop 自动化为每周一 09:30 cron，检查

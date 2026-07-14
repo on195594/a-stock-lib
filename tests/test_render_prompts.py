@@ -217,3 +217,12 @@ def test_warn_if_manifest_stale_prints_warning_on_hash_mismatch_without_raising(
     assert "WARNING: prompt fragment hash mismatch" in captured.err
     assert prompts.FRAGMENT_FILENAMES[0] in captured.err
     assert captured.out == ""
+
+
+def test_real_research_prompt_targets_have_no_canonical_drift() -> None:
+    render_prompts = load_render_prompts_module()
+    skill_path = Path('/home/lin/.claude/skills/a-stock-research/SKILL.md')
+    agents_path = Path('/home/lin/.claude/skills/a-stock-research/AGENTS.md')
+
+    assert render_prompts.render_skill_md(skill_path) == skill_path.read_text(encoding='utf-8')
+    assert render_prompts.render_agents_md(skill_path) == agents_path.read_text(encoding='utf-8')
