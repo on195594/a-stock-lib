@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import os
-import random
-import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable
@@ -14,14 +12,17 @@ from a_stock_lib.market_data import (
     EMPTY_RESPONSE,
     INSUFFICIENT_WINDOW,
     MISSING_COLUMNS,
-    PERMISSION_DENIED,
-    RATE_LIMITED,
     SCHEMA_CHANGED,
-    TIMEOUT,
     UNKNOWN_ERROR,
     MarketDataResult,
 )
 from a_stock_lib.providers.tushare_fundamentals import DEFAULT_ENV_PATH, read_tushare_token
+from a_stock_lib.providers.tushare_common import (
+    TushareRateLimiter,
+    call_with_network_retry,
+    classify_tushare_exception,
+    default_tushare_rate_limiter,
+)
 
 DAILY_SOURCE = "tushare.daily"
 INDEX_DAILY_SOURCE = "tushare.index_daily"
@@ -38,10 +39,14 @@ class TushareMarketDataProvider:
         client: Any | None = None,
         client_factory: Callable[[str], Any] | None = None,
         env_path: Path = DEFAULT_ENV_PATH,
+        rate_limiter: TushareRateLimiter | None = None,
     ) -> None:
         self.token = token if token is not None else os.environ.get("TUSHARE_TOKEN") or read_tushare_token(env_path)
         self._client = client
         self._client_factory = client_factory
+        self._rate_limiter = rate_limiter or (
+            default_tushare_rate_limiter() if client is None else TushareRateLimiter(10**9)
+        )
 
     def fetch_score_price(self, code: str, score_date: str) -> MarketDataResult[float]:
         try:
@@ -112,20 +117,7 @@ class TushareMarketDataProvider:
         )
 
     def _retry_call(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
-        max_retries = 3
-        base_delay = 1.0
-        for attempt in range(max_retries):
-            try:
-                return func(*args, **kwargs)
-            except Exception as exc:
-                err_msg = str(exc).lower()
-                is_rate_limit = "rate limit" in err_msg or "over limit" in err_msg or "频次" in err_msg or "限频" in err_msg
-                is_transient = is_rate_limit or "timeout" in err_msg or "timed out" in err_msg or "connection" in err_msg or "disconnect" in err_msg
-                if is_transient and attempt < max_retries - 1:
-                    delay = base_delay * (2 ** attempt) + random.uniform(0, 0.5)
-                    time.sleep(delay)
-                    continue
-                raise exc
+        return call_with_network_retry(func, *args, limiter=self._rate_limiter, **kwargs)
 
     def fetch_index_bars(self, symbol: str) -> MarketDataResult[pd.DataFrame]:
         client_result = self._client_or_failure(INDEX_DAILY_SOURCE)
@@ -135,7 +127,7 @@ class TushareMarketDataProvider:
         try:
             df = self._retry_call(client.index_daily, ts_code=to_tushare_index_code(symbol))
         except Exception as exc:
-            return _exception_result(INDEX_DAILY_SOURCE, exc)
+            return _exception_result(INDEX_DAILY_SOURCE, exc, self.token)
         return _normalize_tushare_bars(df, INDEX_DAILY_SOURCE, "index_bars")
 
     def fetch_trade_calendar(self, start_date: str, end_date: str) -> MarketDataResult[pd.DataFrame]:
@@ -153,7 +145,7 @@ class TushareMarketDataProvider:
                 fields="cal_date",
             )
         except Exception as exc:
-            return _exception_result(TRADE_CAL_SOURCE, exc)
+            return _exception_result(TRADE_CAL_SOURCE, exc, self.token)
         fetched_at = _now()
         if df is None:
             return MarketDataResult(None, "failed", TRADE_CAL_SOURCE, fetched_at, error_code=EMPTY_RESPONSE)
@@ -188,7 +180,7 @@ class TushareMarketDataProvider:
                 fields="ts_code,trade_date,open,high,low,close,vol,amount",
             )
         except Exception as exc:
-            return _exception_result(DAILY_SOURCE, exc)
+            return _exception_result(DAILY_SOURCE, exc, self.token)
         return _normalize_tushare_bars(df, DAILY_SOURCE, purpose)
 
     def _client_or_failure(self, source: str) -> Any | MarketDataResult[Any]:
@@ -210,13 +202,13 @@ class TushareMarketDataProvider:
 
                     self._client = ts.pro_api(self.token)
             except Exception as exc:
-                return _exception_result(source, exc)
+                return _exception_result(source, exc, self.token)
         return self._client
 
 
 def to_tushare_stock_code(code: str) -> str:
     normalized = code.strip().upper()
-    if normalized.endswith((".SH", ".SZ")):
+    if normalized.endswith((".SH", ".SZ", ".BJ")):
         return normalized
     if len(normalized) != 6 or not normalized.isdigit():
         raise ValueError(f"unsupported stock code: {code}")
@@ -224,6 +216,8 @@ def to_tushare_stock_code(code: str) -> str:
         return f"{normalized}.SH"
     if normalized.startswith(("0", "3")):
         return f"{normalized}.SZ"
+    if normalized.startswith(("4", "8", "92")):
+        return f"{normalized}.BJ"
     raise ValueError(f"unsupported stock code: {code}")
 
 
@@ -298,19 +292,12 @@ def _scalar_failure(result: MarketDataResult[pd.DataFrame], source: str) -> Mark
     )
 
 
-def _exception_result(source: str, exc: Exception) -> MarketDataResult[pd.DataFrame]:
-    message = str(exc)
-    lowered = message.lower()
-    if "timeout" in lowered or "timed out" in lowered or "time limit" in lowered:
-        code = TIMEOUT
-    elif "rate limit" in lowered or "rate" in lowered or "频次" in message or "限频" in message:
-        code = RATE_LIMITED
-    elif "权限" in message or "积分" in message or "permission" in lowered:
-        code = PERMISSION_DENIED
-    elif "token" in lowered or "auth" in lowered:
-        code = AUTH_MISSING
-    else:
-        code = UNKNOWN_ERROR
+def _exception_result(
+    source: str,
+    exc: Exception,
+    token: str | None = None,
+) -> MarketDataResult[pd.DataFrame]:
+    code, message = classify_tushare_exception(exc, token)
     return MarketDataResult(None, "failed", source, _now(), error_code=code, error_message=message)
 
 

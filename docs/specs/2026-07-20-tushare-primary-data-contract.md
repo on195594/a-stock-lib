@@ -66,14 +66,14 @@ fetch_balance_history
 fetch_cashflow_history
 ```
 
-每条记录必须保留：
+统一输出必须包含以下可空公共键：
 
 ```text
 ts_code, endpoint, ann_date, f_ann_date, end_date,
 report_type, comp_type, end_type, update_flag
 ```
 
-接口缺少某个可选字段时记录字段级缺失，不得用其他报告期、其他 endpoint 或旧缓存静默补值。
+`income`、`balancesheet`、`cashflow` 官方输出提供全部上述报告键；`fina_indicator` 官方输出仅提供 `ts_code/ann_date/end_date/update_flag`，因此其 `f_ann_date/report_type/comp_type/end_type` 必须保持 `NULL`。接口缺少字段时记录字段级缺失，不得用其他报告期、其他 endpoint 或旧缓存静默补值。
 
 ### 3.3 `TushareDividendProvider`
 
@@ -105,7 +105,8 @@ coverage_status
 6. 少于 60 个有效月度样本时返回 `INSUFFICIENT_HISTORY`，不得输出可用于评分的分位；
 7. 上市不足十年但达到 60 个样本时为 `SINCE_LISTING`；
 8. 覆盖十年且样本合格时为 `FULL_10Y`；
-9. 不得把 12 个月样本标为“十年分位”。
+9. 分位沿用 tracker 兼容口径：`count(history < current) / N * 100`，严格小于，不把等值样本计入；
+10. 不得把 12 个月样本标为“十年分位”。
 
 ## 4. 统一结果合同
 
@@ -119,6 +120,8 @@ freshness_days
 request_fingerprint
 row_count
 ```
+
+`source_as_of` 必须表示来源观察的实际可见日期，而不是财务报告期：估值使用 `trade_date`；三大报表使用非空 `f_ann_date` 优先、否则 `ann_date`；`fina_indicator` 使用 `ann_date`；分红使用 `imp_ann_date` 优先、否则 `ann_date`。估值派生的 `window_start/window_end` 也必须返回实际纳入计算的首末观察日。
 
 失败结果至少包含：
 
@@ -173,7 +176,7 @@ prospective_observed    # 正式采集日起真实观察并不可变保存的数
 规则：
 
 - 回填记录不得用于覆盖历史预测或伪造历史时点可见数据；
-- 财务选择的有效公告日为非空 `f_ann_date` 优先，否则 `ann_date`；空字符串必须先规范为 `NULL`；
+- 三大报表的有效公告日为非空 `f_ann_date` 优先，否则 `ann_date`；`fina_indicator` 只能使用 `ann_date`；空字符串必须先规范为 `NULL`；
 - 给定 score date，只能选择有效公告日不晚于 score date 的记录；
 - 后续更正必须形成新的 observation，不覆盖旧 observation；
 - `update_flag` 是来源字段，不足以单独证明完整的更正历史。

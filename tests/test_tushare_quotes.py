@@ -43,6 +43,13 @@ def test_tushare_provider_reads_token_from_env_file_when_env_missing(tmp_path, m
     assert provider.token == "file-token-456"
 
 
+def test_tushare_stock_code_supports_beijing_exchange() -> None:
+    from a_stock_lib.providers.tushare_quotes import to_tushare_stock_code
+
+    assert to_tushare_stock_code("920000") == "920000.BJ"
+    assert to_tushare_stock_code("430047.BJ") == "430047.BJ"
+
+
 def test_tushare_normalizer_requires_dataframe():
     result = _normalize_tushare_bars(
         [{"trade_date": "20260623", "close": "10.5"}],

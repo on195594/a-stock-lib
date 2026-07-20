@@ -23,6 +23,7 @@ UNKNOWN_ERROR = "UNKNOWN_ERROR"
 SOURCE_DISABLED = "SOURCE_DISABLED"
 AUTH_MISSING = "AUTH_MISSING"
 PERMISSION_DENIED = "PERMISSION_DENIED"
+INVALID_ARGUMENT = "INVALID_ARGUMENT"
 
 MarketDataErrorCode = Literal[
     "REMOTE_DISCONNECTED",
@@ -38,6 +39,7 @@ MarketDataErrorCode = Literal[
     "SOURCE_DISABLED",
     "AUTH_MISSING",
     "PERMISSION_DENIED",
+    "INVALID_ARGUMENT",
 ]
 
 
@@ -54,6 +56,9 @@ class MarketDataResult(Generic[T]):
     freshness_days: int | None = None
     adjusted: str = "none"
     volume_unit: str = "unknown"
+    source_as_of: str | None = None
+    request_fingerprint: str | None = None
+    row_count: int | None = None
 
 
 class MarketDataProvider(Protocol):

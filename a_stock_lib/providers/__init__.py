@@ -7,11 +7,16 @@ from .validated_realtime_quotes import (
     market_session,
     validate_quote_observation,
 )
+from .tushare_financials import TushareDividendProvider, TushareFinancialProvider
+from .tushare_valuation import TushareValuationProvider
 
 __all__ = [
     "QuoteObservation",
     "ValidatedRealtimeQuote",
     "ValidatedRealtimeQuoteProvider",
+    "TushareDividendProvider",
+    "TushareFinancialProvider",
+    "TushareValuationProvider",
     "market_session",
     "validate_quote_observation",
 ]

@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.0] — 2026-07-21
+
+- 新增 `TushareValuationProvider`，提供全市场单日 `daily_basic` 与单股历史估值；保留亏损公司 PE 空值，并返回 `source_as_of`、`request_fingerprint`、`row_count`。
+- 新增纯函数估值分位计算器：十年窗口、月末采样、至少 60 个有效月，沿用 tracker 的严格小于排名公式。
+- 新增 `TushareFinancialProvider` 与 `TushareDividendProvider`，覆盖财务指标、三大报表和分红事件；不伪造 `fina_indicator` 官方未提供的 PIT 字段。
+- 新增统一 TuShare 限流与错误语义：真实客户端共享 180 次/分钟限流器，仅 typed 网络瞬态错误重试一次，频次/权限/积分错误不重试，错误消息脱敏 Token。
+- 固定可选依赖 `tushare==1.4.29`，新增 `INVALID_ARGUMENT` 和结果 metadata；默认 pytest 自动隔离 TuShare、Telegram 与代理凭据。
+- 扩展股票代码转换以支持北交所 `.BJ`。
+- 验证：库级 `155 passed`；0.4.0 wheel 独立安装 smoke 通过；tracker shadow `964 passed`；research shadow `490 passed`，统一 bash 门禁 `6 passed`。
+- 本版本尚未安装到生产消费者：tracker 仍为 `0.2.0`，research 仍为 `0.3.0`，后续 cutover 需单独确认。
+
 ## [0.3.0] — 2026-07-14
 
 - 新增 `ValidatedRealtimeQuoteProvider`：新浪主源失败后要求东方财富与腾讯在交易日、120秒盘中时效及0.3%价格差内双源一致，否则 fail-closed。

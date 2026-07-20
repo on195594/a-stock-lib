@@ -4,7 +4,7 @@
 
 A 股投研三系统（`a-stock-tracker`/`a-stock-research`/`a-stock-monitor`）共享的市场数据 Provider 原语包。从 `a-stock-tracker/lib/` 剥离，目标是消灭三套重复的行情/基本面抓取实现。
 
-**当前状态（2026-07-14）**：本仓库版本为 `0.3.0`。在 `0.2.0` contracts/canonical prompts 基础上新增 fail-closed 复合实时行情 Provider 与六框架主观语义映射；a-stock-research 已接入新增接口，其他消费者既有 Provider 行为保持不变。全量测试 `126 passed`。a-stock-tracker 仍锁定并消费兼容的 `0.2.0` 接口面。
+**当前状态（2026-07-21）**：源码版本为 `0.4.0`，已实现 TuShare 估值、财务、分红 Provider、十年估值分位计算和统一限流/错误语义。库级 `155 passed`；0.4.0 wheel 已通过 tracker `964 passed`、research `490 passed` + bash `6 passed` 的隔离 shadow。尚未生产切换：tracker/research 仍分别使用 `0.2.0`/`0.3.0`。
 
 **文档指针**：
 - 架构决策 / 为什么这么设计 → `docs/design/2026-06-22-three-system-restructure-design.md`
@@ -34,6 +34,10 @@ python3 -m build           # 产出版本化 wheel（消费方安装这个，不
 | `a_stock_lib/providers/tushare_quotes.py` | 行情主源（需 `TUSHARE_TOKEN`），已完成 Phase 3 token 来源、schema、异常分类硬化 |
 | `a_stock_lib/providers/baostock_quotes.py` | 行情 degraded fallback，已完成 Phase 3 登录异常、代码转换、schema 校验硬化 |
 | `a_stock_lib/providers/tushare_fundamentals.py` | 全市场行业分类批量拉取 + 本地 JSON 缓存（30天TTL），全新代码，替代不稳定的 AKShare `stock_individual_info_em` |
+| `a_stock_lib/providers/tushare_common.py` | TuShare Token、进程级限流、typed 网络重试、错误分类、请求指纹与结果 metadata |
+| `a_stock_lib/providers/tushare_valuation.py` | `daily_basic` 全市场单日与单股历史估值 Provider |
+| `a_stock_lib/providers/tushare_financials.py` | 财务指标、三大报表与分红事件 Provider |
+| `a_stock_lib/valuation.py` | 十年窗口、月末采样、最少 60 月的估值分位纯函数 |
 
 ---
 

@@ -80,13 +80,15 @@
   授权前禁止碰。
 - 不提交 `.env`/密钥/凭证/临时文件。
 
-## 项目现状（2026-07-14）
+## 项目现状（2026-07-21）
 
-版本 `0.3.0`。新增 fail-closed 复合实时行情 Provider、六框架主观语义映射，并由
-a-stock-research 接入；既有 Provider 接口与行为保持兼容。本仓库全量测试当前基线
-为 `126 passed`。
+源码版本 `0.4.0`。已实现 TuShare 估值、财务、分红 Provider、十年估值分位计算、
+统一限流/错误语义和默认凭据隔离；库级基线为 `155 passed`。0.4.0 wheel 已通过
+tracker `964 passed`、research `490 passed` + bash `6 passed` 的隔离 shadow，
+但尚未安装到生产消费者。
 
-跨项目当前状态：a-stock-tracker 已锁定 `a-stock-lib==0.2.0`，Phase 6 仍保持
+跨项目当前状态：a-stock-tracker 仍锁定 `a-stock-lib==0.2.0`，research 仍使用
+`0.3.0`；后续 cutover 需单独确认。Phase 6 仍保持
 report-only；2026-07-02 已把 weekly PM loop 自动化为每周一 09:30 cron，检查
 weekly/daily/outcome 日志、`READY_CRON` 和 `accuracy-report`，并通过 Telegram bot
 发送摘要（tracker commit `f181010`，验证 `211 passed, 1 skipped`）。该任务已经按

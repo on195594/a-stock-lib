@@ -40,7 +40,7 @@
 
 6. **跑消费方测试，不只信任 codex/agy 的转述**
    - tracker：`cd ~/a-stock-tracker && source .venv/bin/activate && pytest -q`
-   - research：`cd ~/.claude/skills/a-stock-research && python3 -m pytest tests/ -q`（注意还有一个 bash 测试 `tests/test_watchlist_refresh.sh`，按需单独跑）
+   - research：`cd ~/.claude/skills/a-stock-research && bash tests/run_all.sh`（统一执行 pytest 严格 warning 门禁和 `tests/test_check_holdings_cron.sh`）
    - 把两边真实通过条数记下来，不要用上一次版本的旧数字
 
 7. **同步文档（新版本号 + 最新全量测试条数）**
