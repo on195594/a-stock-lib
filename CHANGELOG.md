@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.1] — 2026-07-21
+
+- 修复真实 `fina_indicator` 默认响应省略 `update_flag` 导致 Provider fail-closed 的问题；请求现显式声明生产 materialization 所需字段，包括 `update_flag`、ROE、净利润同比、资产负债率、毛利率和 BPS。
+- 该问题由生产强切前的东方电缆真实隔离预检发现；0.4.0 不进入生产，消费者直接升级到 0.4.1。
+
 ## [0.4.0] — 2026-07-21
 
 - 新增 `TushareValuationProvider`，提供全市场单日 `daily_basic` 与单股历史估值；保留亏损公司 PE 空值，并返回 `source_as_of`、`request_fingerprint`、`row_count`。

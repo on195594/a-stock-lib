@@ -16,7 +16,7 @@ A 股投研三系统（`a-stock-tracker` 评分管道 / `a-stock-research` 新�
 - **Phase 4（已完成，2026-06-26）**：`a-stock-tracker` 完成切换，退役本地行情 Provider 副本；当前已版本化锁定 `a-stock-lib==0.2.0`，保留本地专属环境门禁与 SQLite 缓存/审计编排。
 - **技术债清理（已完成，2026-06-29）**：P0（`tushare_quotes` 裸异常逃逸修复）、P1（`__init__` 返回类型注解、`_normalize_baostock_bars` 函数拆分）、Step A（新增 `fetcher_utils.py` 提取 `detect_split_ratio` 共享模块，消除 a-stock-research/a-stock-tracker 双份维护），发布 `0.1.3` 版本，全量测试 `61 passed`。
 - **复合实时行情 + contracts/prompts（当前，2026-07-14）**：在既有 `0.2.0` contracts/canonical prompts 基础上新增 fail-closed 实时行情复合 Provider 与六框架主观语义映射；a-stock-research 已消费新增接口，其他消费者既有 Provider 行为不变。当前版本 `0.3.0`，全量测试 `126 passed`。
-- **TuShare 生产主源 Phase 1（已实现、未切换生产，2026-07-21）**：源码版本升至 `0.4.0`，新增估值、财务、分红 Provider、十年估值分位计算器、统一限流/错误语义和默认凭据隔离；库级 `155 passed`，tracker/research 通过 0.4.0 wheel shadow 验证。生产 tracker/research 仍分别使用 `0.2.0`/`0.3.0`，cutover 需单独确认。
+- **TuShare 生产主源 Phase 1（已实现、生产强切准备中，2026-07-21）**：源码版本升至 `0.4.1`，新增估值、财务、分红 Provider、十年估值分位计算器、统一限流/错误语义和默认凭据隔离；0.4.1 进一步修复真实 `fina_indicator` 默认响应省略 `update_flag` 的问题。0.4.0 不进入生产，tracker 强切目标为 0.4.1。
 - **Phase 3b（已完成，2026-07-01同日）**：`prompts/` 渲染的 `AGENTS.md` 首次真正落地到 a-stock-research 并验证 codex 自动读取（此前只验证过 agy）；`contracts.parse_cycle_stage_tag` 接入 a-stock-research 的 `cmd_set_analysis`（覆盖 C/D/B 全部必做框架，均 fail-closed），SKILL.md 周期位置区域同步完成语法切换。这部分改动全部发生在 a-stock-research 仓库，本仓库代码未变。2026-07-02 research 已补上 `cmd_checklist` 里 C 框架的 warn-only 提前反馈 UX。详见 [`CHANGELOG.md`](CHANGELOG.md)。
 - **跨项目 PM loop（已完成，2026-07-02）**：a-stock-tracker 的 Phase 6 weekly PM loop 已自动化为每周一 09:30 cron + Telegram 摘要，检查 weekly/daily/outcome 日志、`READY_CRON` 和 `accuracy-report`；tracker commit `f181010`，验证 `211 passed, 1 skipped`。Framework B 仍保持 report-only，不因自动摘要而启用生产写入。
 

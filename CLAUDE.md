@@ -4,7 +4,7 @@
 
 A 股投研三系统（`a-stock-tracker`/`a-stock-research`/`a-stock-monitor`）共享的市场数据 Provider 原语包。从 `a-stock-tracker/lib/` 剥离，目标是消灭三套重复的行情/基本面抓取实现。
 
-**当前状态（2026-07-21）**：源码版本为 `0.4.0`，已实现 TuShare 估值、财务、分红 Provider、十年估值分位计算和统一限流/错误语义。库级 `155 passed`；0.4.0 wheel 已通过 tracker `964 passed`、research `490 passed` + bash `6 passed` 的隔离 shadow。尚未生产切换：tracker/research 仍分别使用 `0.2.0`/`0.3.0`。
+**当前状态（2026-07-21）**：源码版本为 `0.4.1`。0.4.1 修复真实 `fina_indicator` 默认响应省略 `update_flag` 的问题，显式请求生产 materialization 字段；库级 `155 passed`，真实单股隔离预检和独立 wheel smoke 已通过。0.4.0 不进入生产，tracker 强切目标为 0.4.1。
 
 **文档指针**：
 - 架构决策 / 为什么这么设计 → `docs/design/2026-06-22-three-system-restructure-design.md`

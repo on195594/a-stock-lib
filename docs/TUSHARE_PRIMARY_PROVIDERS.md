@@ -1,11 +1,11 @@
 # TuShare 生产主源 Provider API
 
-适用版本：`a-stock-lib==0.4.0`
+适用版本：`a-stock-lib==0.4.1`
 
 ## 安装
 
 ```bash
-pip install 'a-stock-lib[tushare]==0.4.0'
+pip install 'a-stock-lib[tushare]==0.4.1'
 ```
 
 本版本固定 `tushare==1.4.29`。Token 优先级：构造参数 → `TUSHARE_TOKEN` → 显式 `env_path` 指向的文件。禁止在代码中硬编码 Token。

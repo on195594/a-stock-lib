@@ -6,7 +6,7 @@
 
 A 股投研三系统（`a-stock-tracker`/`a-stock-research`/`a-stock-monitor`）共享的市场数据 Provider 原语包，从 `a-stock-tracker/lib/` 剥离。
 
-当前状态（2026-07-21）：源码版本为 `0.4.0`，已实现 TuShare 估值、财务、分红 Provider、十年估值分位计算和统一限流/错误语义。库级 `155 passed`；0.4.0 wheel 已通过 tracker `964 passed`、research `490 passed` + bash `6 passed` 的隔离 shadow。尚未生产切换：tracker/research 仍分别使用 `0.2.0`/`0.3.0`。
+当前状态（2026-07-21）：源码版本为 `0.4.1`。0.4.1 修复真实 `fina_indicator` 默认响应省略 `update_flag` 的问题，显式请求生产 materialization 字段；库级 `155 passed`，真实单股隔离预检和独立 wheel smoke 已通过。0.4.0 不进入生产，tracker 强切目标为 0.4.1。
 
 Phase 3b（周期位置判断结构化校验接线，2026-07-01同日完成）：`prompts/` 渲染的 `AGENTS.md` 首次真正落地到 a-stock-research 并验证 codex 会自动读取（此前只验证过 agy）；`contracts.parse_cycle_stage_tag` 已接入 a-stock-research 的 `cmd_set_analysis`（不是 `cmd_checklist`——`cmd_checklist` 只对 A/C/F 框架生效，而周期位置判断必做的是 C/D/B，二者交集仅 C 一个框架，接 checklist 无法形成对 B/D 的真正约束），C/D/B 框架均为 fail-closed。这部分代码改动全部发生在 a-stock-research 仓库，本仓库自身代码未变。2026-07-02 research 已补上 `cmd_checklist` 里 C 框架的 warn-only 提前反馈 UX。
 

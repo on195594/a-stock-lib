@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import pandas as pd
 
-from a_stock_lib.market_data import INVALID_ARGUMENT, SCHEMA_CHANGED, MarketDataResult, now
+from a_stock_lib.market_data import (
+    INVALID_ARGUMENT,
+    SCHEMA_CHANGED,
+    MarketDataResult,
+    now,
+)
 from a_stock_lib.providers.tushare_common import (
     TushareProviderBase,
     compact_date,
@@ -60,6 +65,10 @@ DIVIDEND_NUMERIC_COLUMNS = (
     "cash_div_tax",
     "base_share",
 )
+FINA_INDICATOR_FIELDS = (
+    "ts_code,ann_date,end_date,update_flag,roe_waa,netprofit_yoy,"
+    "debt_to_assets,grossprofit_margin,bps"
+)
 
 
 class TushareFinancialProvider(TushareProviderBase):
@@ -89,7 +98,9 @@ class TushareFinancialProvider(TushareProviderBase):
         end_date: str | None = None,
         period: str | None = None,
     ) -> MarketDataResult[pd.DataFrame]:
-        return self._fetch_statement("income", INCOME_SOURCE, code, start_date, end_date, period)
+        return self._fetch_statement(
+            "income", INCOME_SOURCE, code, start_date, end_date, period
+        )
 
     def fetch_balance_history(
         self,
@@ -98,7 +109,9 @@ class TushareFinancialProvider(TushareProviderBase):
         end_date: str | None = None,
         period: str | None = None,
     ) -> MarketDataResult[pd.DataFrame]:
-        return self._fetch_statement("balancesheet", BALANCE_SHEET_SOURCE, code, start_date, end_date, period)
+        return self._fetch_statement(
+            "balancesheet", BALANCE_SHEET_SOURCE, code, start_date, end_date, period
+        )
 
     def fetch_cashflow_history(
         self,
@@ -107,7 +120,9 @@ class TushareFinancialProvider(TushareProviderBase):
         end_date: str | None = None,
         period: str | None = None,
     ) -> MarketDataResult[pd.DataFrame]:
-        return self._fetch_statement("cashflow", CASHFLOW_SOURCE, code, start_date, end_date, period)
+        return self._fetch_statement(
+            "cashflow", CASHFLOW_SOURCE, code, start_date, end_date, period
+        )
 
     def _fetch_statement(
         self,
@@ -140,6 +155,8 @@ class TushareFinancialProvider(TushareProviderBase):
     ) -> MarketDataResult[pd.DataFrame]:
         try:
             params = _history_params(code, start_date, end_date, period)
+            if endpoint == "fina_indicator":
+                params["fields"] = FINA_INDICATOR_FIELDS
         except ValueError as exc:
             return _invalid_argument(source, exc)
         result = self._request_frame(source, endpoint, params, required_columns)
@@ -198,7 +215,9 @@ def _normalize_financial_result(
             if column not in normalized.columns:
                 normalized[column] = pd.NA
         normalized = normalize_date_columns(normalized, FINANCIAL_DATE_COLUMNS)
-        normalized = normalized.sort_values(["end_date", "ann_date"], na_position="last").reset_index(drop=True)
+        normalized = normalized.sort_values(
+            ["end_date", "ann_date"], na_position="last"
+        ).reset_index(drop=True)
     except Exception as exc:
         return _schema_failure(result, exc)
     source_as_of = _financial_source_as_of(normalized, endpoint)
@@ -212,7 +231,9 @@ def _normalize_dividend_result(
     try:
         normalized = normalize_date_columns(result.value, DIVIDEND_DATE_COLUMNS)
         normalized = normalize_numeric_columns(normalized, DIVIDEND_NUMERIC_COLUMNS)
-        normalized = normalized.sort_values(["end_date", "ann_date"], na_position="last").reset_index(drop=True)
+        normalized = normalized.sort_values(
+            ["end_date", "ann_date"], na_position="last"
+        ).reset_index(drop=True)
     except Exception as exc:
         return _schema_failure(result, exc)
     source_as_of = _coalesced_maximum_date(normalized, "imp_ann_date", "ann_date")
@@ -232,7 +253,11 @@ def _coalesced_maximum_date(
 ) -> str | None:
     if frame.empty or fallback not in frame.columns:
         return None
-    values = frame[primary].combine_first(frame[fallback]) if primary in frame.columns else frame[fallback]
+    values = (
+        frame[primary].combine_first(frame[fallback])
+        if primary in frame.columns
+        else frame[fallback]
+    )
     values = values.dropna()
     return str(values.max()) if not values.empty else None
 

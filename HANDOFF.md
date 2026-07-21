@@ -82,13 +82,13 @@
 
 ## 项目现状（2026-07-21）
 
-源码版本 `0.4.0`。已实现 TuShare 估值、财务、分红 Provider、十年估值分位计算、
-统一限流/错误语义和默认凭据隔离；库级基线为 `155 passed`。0.4.0 wheel 已通过
-tracker `964 passed`、research `490 passed` + bash `6 passed` 的隔离 shadow，
-但尚未安装到生产消费者。
+源码版本 `0.4.1`。已实现 TuShare 估值、财务、分红 Provider、十年估值分位计算、
+统一限流/错误语义和默认凭据隔离；库级基线为 `155 passed`。0.4.1 修复真实
+`fina_indicator` 默认响应省略 `update_flag` 的问题，真实单股隔离预检和独立 wheel
+smoke 已通过。0.4.0 不进入生产，tracker 强切目标为 0.4.1。
 
-跨项目当前状态：a-stock-tracker 仍锁定 `a-stock-lib==0.2.0`，research 仍使用
-`0.3.0`；后续 cutover 需单独确认。Phase 6 仍保持
+跨项目当前状态：a-stock-tracker 生产仍运行 `a-stock-lib==0.2.0`，research 仍使用
+`0.3.0`；tracker 三域强切已取得单独确认，正在执行。Phase 6 仍保持
 report-only；2026-07-02 已把 weekly PM loop 自动化为每周一 09:30 cron，检查
 weekly/daily/outcome 日志、`READY_CRON` 和 `accuracy-report`，并通过 Telegram bot
 发送摘要（tracker commit `f181010`，验证 `211 passed, 1 skipped`）。该任务已经按

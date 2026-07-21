@@ -105,7 +105,15 @@ def test_indicator_history_keeps_unavailable_common_keys_null() -> None:
         assert pd.isna(row[column])
     assert client.calls[0] == (
         "fina_indicator",
-        {"ts_code": "600036.SH", "start_date": "20250101", "end_date": "20260720"},
+        {
+            "ts_code": "600036.SH",
+            "start_date": "20250101",
+            "end_date": "20260720",
+            "fields": (
+                "ts_code,ann_date,end_date,update_flag,roe_waa,netprofit_yoy,"
+                "debt_to_assets,grossprofit_margin,bps"
+            ),
+        },
     )
 
 
@@ -144,7 +152,9 @@ def test_statement_history_preserves_point_in_time_keys(
 def test_statement_history_fails_when_report_type_is_missing() -> None:
     frames = _frames()
     frames["income"] = frames["income"].drop(columns="report_type")
-    provider = TushareFinancialProvider(token="fake-token", client=_FakeFinancialClient(frames))
+    provider = TushareFinancialProvider(
+        token="fake-token", client=_FakeFinancialClient(frames)
+    )
 
     result = provider.fetch_income_history("600036")
 
@@ -155,7 +165,9 @@ def test_statement_history_fails_when_report_type_is_missing() -> None:
 def test_indicator_history_fails_when_update_flag_is_missing() -> None:
     frames = _frames()
     frames["fina_indicator"] = frames["fina_indicator"].drop(columns="update_flag")
-    provider = TushareFinancialProvider(token="fake-token", client=_FakeFinancialClient(frames))
+    provider = TushareFinancialProvider(
+        token="fake-token", client=_FakeFinancialClient(frames)
+    )
 
     result = provider.fetch_indicator_history("600036")
 
@@ -184,7 +196,9 @@ def test_dividend_history_preserves_tax_semantics_and_dates() -> None:
 def test_empty_dividend_history_is_valid_no_event_result() -> None:
     frames = _frames()
     frames["dividend"] = frames["dividend"].iloc[0:0]
-    provider = TushareDividendProvider(token="fake-token", client=_FakeFinancialClient(frames))
+    provider = TushareDividendProvider(
+        token="fake-token", client=_FakeFinancialClient(frames)
+    )
 
     result = provider.fetch_dividend_history("600036")
 
