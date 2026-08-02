@@ -4,6 +4,7 @@
 
 - 修复真实 `fina_indicator` 默认响应省略 `update_flag` 导致 Provider fail-closed 的问题；请求现显式声明生产 materialization 所需字段，包括 `update_flag`、ROE、净利润同比、资产负债率、毛利率和 BPS。
 - 该问题由生产强切前的东方电缆真实隔离预检发现；0.4.0 不进入生产，消费者直接升级到 0.4.1。
+- **2026-08-02 补记**：本版本原在独立 worktree（`feat/tushare-primary-providers` 分支）开发，tracker 已于 2026-07-21 完成强切消费（用户确认为授权变更），但该分支直到今天才 fast-forward 合并回 master——master 的状态文档一度停留在 `0.3.0` 并错误宣称 tracker 仍锁定 `0.2.0`，长达约 12 天。合并后重新验证：库级 `155 passed`，重新 build wheel 校验一致，tracker 现存安装未受影响。
 
 ## [0.4.0] — 2026-07-21
 

@@ -80,15 +80,23 @@
   授权前禁止碰。
 - 不提交 `.env`/密钥/凭证/临时文件。
 
-## 项目现状（2026-07-21）
+## 项目现状（2026-08-02）
 
-源码版本 `0.4.1`。已实现 TuShare 估值、财务、分红 Provider、十年估值分位计算、
-统一限流/错误语义和默认凭据隔离；库级基线为 `155 passed`。0.4.1 修复真实
-`fina_indicator` 默认响应省略 `update_flag` 的问题，真实单股隔离预检和独立 wheel
-smoke 已通过。0.4.0 不进入生产，tracker 强切目标为 0.4.1。
+本仓库版本 `0.4.1`。`feat/tushare-primary-providers` 分支已于本日 fast-forward 合并
+回 master——该分支此前在独立 worktree（`a-stock-lib-tushare-phase0b`）开发，已实现
+TuShare 估值、财务、分红 Provider、十年估值分位计算、统一限流/错误语义和默认凭据
+隔离；库级基线为 `155 passed`。0.4.1 修复真实 `fina_indicator` 默认响应省略
+`update_flag` 的问题，真实单股隔离预检和独立 wheel smoke 已通过。但该分支合并前
+master 一直停留在 `0.3.0`，本仓库自己的状态文档曾错误地宣称"tracker 仍锁定
+0.2.0"长达约 12 天——**下次遇到"分支在独立 worktree 里开发+提前建 wheel 给消费方
+用"这种模式，合并回 master 与更新状态文档必须作为同一批工作的收尾动作，不能让
+两者脱节**。
 
-跨项目当前状态：a-stock-tracker 生产仍运行 `a-stock-lib==0.2.0`，research 仍使用
-`0.3.0`；tracker 三域强切已取得单独确认，正在执行。Phase 6 仍保持
+跨项目当前状态：a-stock-tracker 已于 2026-07-21 完成 TuShare 三域生产强切
+（commit `6c8439f`，用户已确认此为授权变更），实际消费 `a-stock-lib==0.4.1`，
+测试 `263 passed`，此后持续在此基础上迭代（BPS 口径修复、Framework B cohort 自动
+冻结等）。a-stock-research 仍使用 `0.3.0`，尚未跟进升级，是否升级待单独决定。
+Phase 6 仍保持
 report-only；2026-07-02 已把 weekly PM loop 自动化为每周一 09:30 cron，检查
 weekly/daily/outcome 日志、`READY_CRON` 和 `accuracy-report`，并通过 Telegram bot
 发送摘要（tracker commit `f181010`，验证 `211 passed, 1 skipped`）。该任务已经按
