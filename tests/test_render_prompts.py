@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import sys
 from pathlib import Path
 from types import ModuleType
 
@@ -44,8 +45,8 @@ def synthetic_skill_text(include_frontmatter: bool = False) -> str:
         "OLD_DUAL_TRACK_CONTENT\n"
         "## 第五步：防韭菜检查（买入前必做）\n"
         "PRESERVE_AFTER_ALL\n"
-        "Claude should read docs. Read ~/.claude/skills/a-stock-research/frameworks/a.md\n"
-        "Run python3 ~/.claude/skills/a-stock-research/cache.py\n"
+        "The agent should read docs. Read references/frameworks/a.md\n"
+        "Run a-stock-cache\n"
     )
 
 
@@ -166,7 +167,7 @@ def test_write_text_atomic_creates_and_overwrites_leaving_no_temp_file(tmp_path:
     assert list(tmp_path.glob(f".{target.name}.tmp.*")) == []
 
 
-def test_render_agents_md_strips_frontmatter_rewrites_claude_and_prepends_header(tmp_path: Path) -> None:
+def test_render_agents_md_strips_frontmatter_and_prepends_header(tmp_path: Path) -> None:
     render_prompts = load_render_prompts_module()
     source = tmp_path / "SKILL.md"
     source.write_text(synthetic_skill_text(include_frontmatter=True), encoding="utf-8")
@@ -177,9 +178,9 @@ def test_render_agents_md_strips_frontmatter_rewrites_claude_and_prepends_header
     assert rendered.startswith("# AGENTS.md — a-stock-research\n\n")
     assert "name: fixture" not in rendered
     assert "Claude" not in rendered_body
-    assert "codex/agy should read docs." in rendered_body
-    assert "Read /home/lin/.claude/skills/a-stock-research/frameworks/a.md" in rendered_body
-    assert "python3 /home/lin/.claude/skills/a-stock-research/cache.py" in rendered_body
+    assert "The agent should read docs." in rendered_body
+    assert "Read references/frameworks/a.md" in rendered_body
+    assert "Run a-stock-cache" in rendered_body
 
 
 def test_warn_if_manifest_stale_prints_no_warning_when_hashes_match(
@@ -221,8 +222,20 @@ def test_warn_if_manifest_stale_prints_warning_on_hash_mismatch_without_raising(
 
 def test_real_research_prompt_targets_have_no_canonical_drift() -> None:
     render_prompts = load_render_prompts_module()
-    skill_path = Path('/home/lin/.claude/skills/a-stock-research/SKILL.md')
-    agents_path = Path('/home/lin/.claude/skills/a-stock-research/AGENTS.md')
+    skill_path = Path('/home/lin/a-stock-agent-skills/skills/a-stock-research/SKILL.md')
+    if not skill_path.is_file():
+        pytest.skip('canonical suite checkout is not available')
+    rendered = render_prompts.render_skill_md(skill_path)
+    assert rendered
+    assert '.claude/skills' not in rendered
 
-    assert render_prompts.render_skill_md(skill_path) == skill_path.read_text(encoding='utf-8')
-    assert render_prompts.render_agents_md(skill_path) == agents_path.read_text(encoding='utf-8')
+
+def test_main_requires_explicit_skill_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    render_prompts = load_render_prompts_module()
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["render_prompts.py", "agents_md", "--output-dir", str(tmp_path)],
+    )
+    with pytest.raises(SystemExit):
+        render_prompts.main()

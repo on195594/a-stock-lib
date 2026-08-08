@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Render backend prompt files from canonical a-stock-lib fragments.
 
-The ``skill_md`` target intentionally reads the current sibling-repo
-``/home/lin/.claude/skills/a-stock-research/SKILL.md`` at render time, then
+The ``skill_md`` target reads the explicitly supplied canonical Skill source
+at render time, then
 replaces only the four canonical LLM-instruction regions with files from
 ``a_stock_lib/prompts/fragments``. This keeps the generated Claude
 ``SKILL.md`` anchored to the real current hand-authored source, including YAML
 frontmatter and tool/shell instructions, instead of relying on a manually
 copied template that can silently drift.
 
-The ``agents_md`` target uses the same rendered body, strips Claude Code YAML
+The ``agents_md`` target uses the same rendered body, strips client YAML
 frontmatter, and adds plain-markdown codex/agy framing.
 """
 
@@ -30,7 +30,6 @@ from a_stock_lib.prompts.manifest import FRAGMENT_HASHES  # noqa: E402
 
 FRAGMENTS_DIR = REPO_ROOT / "a_stock_lib" / "prompts" / "fragments"
 MANIFEST_PATH = REPO_ROOT / "a_stock_lib" / "prompts" / "manifest.py"
-DEFAULT_SKILL_SOURCE = Path("/home/lin/.claude/skills/a-stock-research/SKILL.md")
 
 
 def main() -> int:
@@ -42,15 +41,17 @@ def main() -> int:
         action="store_true",
         help="Recompute and rewrite a_stock_lib/prompts/manifest.py instead of rendering.",
     )
-    parser.add_argument("--skill-source", type=Path, default=DEFAULT_SKILL_SOURCE, help=argparse.SUPPRESS)
+    parser.add_argument("--skill-source", type=Path, required=False, help="Explicit canonical Skill.md source")
     args = parser.parse_args()
 
     if args.update_manifest:
         update_manifest()
         return 0
 
-    if args.target is None or args.output_dir is None:
-        parser.error("target and --output-dir are required unless --update-manifest is used")
+    if args.target is None or args.output_dir is None or args.skill_source is None:
+        parser.error("target, --output-dir, and --skill-source are required unless --update-manifest is used")
+    if not args.skill_source.is_file():
+        parser.error(f"skill source is not a regular file: {args.skill_source}")
 
     warn_if_manifest_stale()
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -145,14 +146,6 @@ def replace_region(content: str, start_marker: str, end_marker: str, replacement
 def render_agents_md(skill_source: Path) -> str:
     skill_body = strip_yaml_frontmatter(render_skill_md(skill_source))
     skill_body = skill_body.replace("Claude", "codex/agy")
-    skill_body = skill_body.replace(
-        "Read ~/.claude/skills/a-stock-research/",
-        "Read /home/lin/.claude/skills/a-stock-research/",
-    )
-    skill_body = skill_body.replace(
-        "python3 ~/.claude/skills/a-stock-research/",
-        "python3 /home/lin/.claude/skills/a-stock-research/",
-    )
 
     header = """# AGENTS.md — a-stock-research
 
