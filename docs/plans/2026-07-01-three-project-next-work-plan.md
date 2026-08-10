@@ -2,7 +2,7 @@
 
 日期：2026-07-01
 Owner：Hermes PM
-状态：active cross-project plan
+状态：superseded（2026-08-10；当前 carrier 与发布流程见 `README.md`、`docs/RELEASE_CHECKLIST.md`）
 
 ## 当前统一基线
 

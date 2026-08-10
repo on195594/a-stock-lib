@@ -6,7 +6,6 @@ from a_stock_lib.contracts import (
     CycleStage,
     CycleStageAssessment,
     EvidenceConfidence,
-    FrameworkDecision,
     FrameworkKey,
     RatingTier,
     SubjectiveAssessment,
@@ -27,7 +26,6 @@ def test_framework_subjective_display_names_map_to_normalized_categories() -> No
 
 
 def test_contract_enums_and_dataclasses_construct() -> None:
-    framework = FrameworkDecision(FrameworkKey.A, confident=True)
     cycle = CycleStageAssessment(CycleStage.UPTREND, "订单改善")
     subjective = SubjectiveAssessment(
         SubjectiveCategory.MOAT,
@@ -36,8 +34,6 @@ def test_contract_enums_and_dataclasses_construct() -> None:
         EvidenceConfidence.HIGH,
     )
 
-    assert framework.framework.value == "A"
-    assert framework.confident is True
     assert cycle.stage.value == "上行期"
     assert cycle.rationale == "订单改善"
     assert SubjectiveCategory.INDUSTRY_POSITION.value == "行业地位"

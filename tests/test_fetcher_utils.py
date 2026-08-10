@@ -7,8 +7,6 @@ from __future__ import annotations
 from datetime import date, timedelta
 
 import pandas as pd
-import pytest
-
 from a_stock_lib.fetcher_utils import detect_split_ratio
 
 

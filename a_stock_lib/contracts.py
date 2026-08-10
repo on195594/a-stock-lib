@@ -20,13 +20,6 @@ class FrameworkKey(str, Enum):
     F = "F"
 
 
-@dataclass(frozen=True)
-class FrameworkDecision:
-    framework: FrameworkKey
-    # Captured for future use, not currently consumed by any caller.
-    confident: bool
-
-
 class CycleStage(str, Enum):
     UPTREND = "上行期"
     PEAK = "顶部区"

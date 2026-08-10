@@ -4,7 +4,7 @@
 
 A 股投研三系统（`a-stock-tracker`/`a-stock-research`/`a-stock-monitor`）共享的市场数据 Provider 原语包。从 `a-stock-tracker/lib/` 剥离，目标是消灭三套重复的行情/基本面抓取实现。
 
-**当前状态（2026-08-02）**：本仓库版本 `0.4.1`（`feat/tushare-primary-providers` 分支已于本日 fast-forward 合并回 master——此前该分支在独立 worktree 开发并提前构建 wheel 供 tracker 消费，master 落后生产事实约 12 天，本次合并补齐并同步文档）。新增 TuShare 估值/财务/分红 Provider、十年估值分位计算器、统一限流/错误语义与默认凭据隔离；库级测试 `155 passed`。**a-stock-tracker 已于 2026-07-21 完成生产强切**（commit `6c8439f`，用户已确认为授权变更），实际消费 `0.4.1`，测试 `263 passed`，此后持续在此基础上迭代（BPS 口径修复、Framework B cohort 自动冻结等）。**a-stock-research 仍停留在 `0.3.0`**，尚未跟进升级，是否升级待单独决定。
+**当前状态（2026-08-10）**：本仓库版本 `0.5.0`。已删除没有生产消费者的 BaoStock/Composite fallback、双源实时行情组合器、占位合同和旧 prompt carrier；保留 TuShare 行情/行业/估值/财务/分红 Provider、估值分位、结构化合同和实时行情新鲜度校验。**a-stock-tracker** 与统一的 **`a-stock-agent-skills` runtime** 均消费本包；Agent prompt、rubric 和安装生命周期只归 `/home/lin/a-stock-agent-skills` 所有。
 
 **文档指针**：
 - 架构决策 / 为什么这么设计 → `docs/design/2026-06-22-three-system-restructure-design.md`
@@ -30,9 +30,8 @@ python3 -m build           # 产出版本化 wheel（消费方安装这个，不
 
 | 文件 | 职责 |
 |------|------|
-| `a_stock_lib/market_data.py` | Provider 协议原语：`MarketDataResult`/错误码常量/`CompositeMarketDataProvider`/`normalize_bars_result`/`exception_result`。纯函数+无 IO 副作用，不依赖任何具体数据源 SDK |
+| `a_stock_lib/market_data.py` | Provider 协议原语：`MarketDataResult`、错误码常量和 `MarketDataProvider` 协议。纯类型/数据结构，不依赖具体 SDK |
 | `a_stock_lib/providers/tushare_quotes.py` | 行情主源（需 `TUSHARE_TOKEN`），已完成 Phase 3 token 来源、schema、异常分类硬化 |
-| `a_stock_lib/providers/baostock_quotes.py` | 行情 degraded fallback，已完成 Phase 3 登录异常、代码转换、schema 校验硬化 |
 | `a_stock_lib/providers/tushare_fundamentals.py` | 全市场行业分类批量拉取 + 本地 JSON 缓存（30天TTL），全新代码，替代不稳定的 AKShare `stock_individual_info_em` |
 | `a_stock_lib/providers/tushare_common.py` | TuShare Token、进程级限流、typed 网络重试、错误分类、请求指纹与结果 metadata |
 | `a_stock_lib/providers/tushare_valuation.py` | `daily_basic` 全市场单日与单股历史估值 Provider |
@@ -45,7 +44,7 @@ python3 -m build           # 产出版本化 wheel（消费方安装这个，不
 
 - **禁止直接修改 `~/a-stock-tracker/` 内代码** —— 虽然 tracker 已经完成切换并依赖本包，但因为 tracker 工作区当前有既有未提交改动，在没有 PM 明确授权的情况下，禁止直接修改 tracker。
 - **`TUSHARE_TOKEN` 禁止硬编码** —— Provider 的 token 优先级为构造参数显式传入 > 环境变量 `TUSHARE_TOKEN` > `read_tushare_token()` 从 `~/a-stock-tracker/.env` 读取，路径可通过 `env_path` 覆盖，三个消费方共用同一份 token。`tushare_quotes.py` 已在 Phase 3 统一到这个模式。
-- **测试禁止发起真实网络请求** —— `tushare`/`baostock` SDK 在 Provider 内部是懒加载（方法内 `import`，不是模块顶层），测试用注入 `client` 参数的方式 mock，不依赖真实 SDK 包安装
+- **测试禁止发起真实网络请求** —— `tushare` SDK 在 Provider 内部是懒加载（方法内 `import`，不是模块顶层），测试用注入 `client` 参数的方式 mock，不依赖真实 SDK 包安装
 - **新增函数必须有类型注解，禁止裸 `raise Exception`** —— 失败路径统一收敛成 `MarketDataResult(status="failed", error_code=...)`，不让异常裸露给调用方
 
 ---
@@ -54,9 +53,9 @@ python3 -m build           # 产出版本化 wheel（消费方安装这个，不
 
 全局通用规范（PascalCase类/snake_case函数/函数≤50行用卫语句/logger禁print/dataclass优先/自定义异常禁裸raise Exception）同样适用本项目。以下4条是这个项目特有的、通用规范没覆盖的补充（2026-06-23 agy基于现有代码模式提炼，覆盖"外部数据源接入层"特有的问题）：
 
-1. **第三方SDK调用必须有完整异常屏障，统一转译成`MarketDataResult`**：所有触发真实网络交互的SDK调用（及紧邻的入参清洗逻辑），必须完整包在`try...except Exception`内，转译成`MarketDataResult(status="failed", error_code=...)`。不能让`ConnectionError`/`ValueError`等原生异常越过Provider边界直接抛给业务方——上层消费方不应该被迫依赖`tushare`/`baostock`的异常类型来写自己的`except`。
+1. **第三方SDK调用必须有完整异常屏障，统一转译成`MarketDataResult`**：所有触发真实网络交互的SDK调用（及紧邻的入参清洗逻辑），必须完整包在`try...except Exception`内，转译成`MarketDataResult(status="failed", error_code=...)`。不能让`ConnectionError`/`ValueError`等原生异常越过Provider边界直接抛给业务方——上层消费方不应该被迫依赖`tushare`的异常类型来写自己的`except`。
 2. **本地缓存文件必须原子写入**：涉及把数据落地到本地 JSON/CSV 等缓存文件的逻辑，必须用"写临时文件完整内容→`fsync`→`Path.replace()`原子替换"的模式（参考`tushare_fundamentals.py`的`_write_cache`），不能用裸的`open("w")`覆盖写——本包会被多个进程同时导入，覆盖写期间另一个进程读到的可能是被截断的残缺文件。
-3. **第三方SDK的import必须懒加载在方法内部，且保留`client`注入入口**：`tushare`/`baostock`等重依赖不能出现在模块顶层import，必须在用到的方法内部按需`import`；构造函数必须保留`client: Any | None = None`参数用于测试注入mock，不依赖真实SDK包安装就能跑单测。
+3. **第三方SDK的import必须懒加载在方法内部，且保留`client`注入入口**：`tushare`不能出现在模块顶层import，必须在用到的方法内部按需`import`；构造函数必须保留`client: Any | None = None`参数用于测试注入mock，不依赖真实SDK包安装就能跑单测。
 4. **单日时点查询要做向前回溯的降级语义，不能直接报失败**：查某个确切交易日的数据（如`fetch_score_price`）如果恰逢停牌/周末/节假日缺数据，不应该直接`status="failed"`，而要向前找最近一个有效交易日的数据，`status="degraded"`并带上真实的`freshness_days`，让调用方自己决定能不能接受这个陈旧度——A股节假日调休复杂、停牌情况多，这条降级逻辑应该收敛在Provider层，不要让三个消费方各自重复写日历兜底代码。
 
 ---

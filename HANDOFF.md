@@ -53,9 +53,9 @@
    holds global write access and can apply cross-repo patches"。这句话目前
    被证明不总是对的。遇到写入失败：老实报告失败和具体报错，不要重试/绕过
    sandbox 限制，也不要虚构"已经写入成功"。
-2. **手工复制 canonical fragment 文本容易引入引号不匹配的 bug**（历史上真的
-   发生过，commit `418749c` 修的）——凡是"把渲染出的文本同步到另一个消费
-   文件"这类操作，优先直接跑 `scripts/render_prompts.py`，不要手工复制粘贴。
+2. **Agent prompt 不属于本仓**：research/monitor/QA 的唯一 canonical carrier 是
+   `/home/lin/a-stock-agent-skills`。不要在 `a-stock-lib` 恢复 prompt fragments、
+   renderer 或客户端发布逻辑。
 3. **同一个"框架"概念在不同 CLI 入口表示形式不同**：a-stock-research 的
    `cmd_set_analysis` 的 `framework` 参数传的是 portfolio_label 全称
    （"C资源"/"B银行"），不是裸字母；`cmd_checklist` 的 `<框架>` 参数才是裸
@@ -72,7 +72,7 @@
 
 - `TUSHARE_TOKEN` 禁止硬编码，优先级：构造参数 > 环境变量 >
   `~/a-stock-tracker/.env`（`read_tushare_token()`，路径可用 `env_path` 覆盖）。
-- 第三方 SDK（tushare/baostock）import 必须懒加载在方法内部，构造函数保留
+- 第三方 SDK（tushare）import 必须懒加载在方法内部，构造函数保留
   `client` 注入参数，测试不能碰真实网络。
 - 不能裸 `raise Exception`，失败路径统一收敛成
   `MarketDataResult(status="failed", error_code=...)`。
@@ -80,22 +80,14 @@
   授权前禁止碰。
 - 不提交 `.env`/密钥/凭证/临时文件。
 
-## 项目现状（2026-08-02）
+## 项目现状（2026-08-10）
 
-本仓库版本 `0.4.1`。`feat/tushare-primary-providers` 分支已于本日 fast-forward 合并
-回 master——该分支此前在独立 worktree（`a-stock-lib-tushare-phase0b`）开发，已实现
-TuShare 估值、财务、分红 Provider、十年估值分位计算、统一限流/错误语义和默认凭据
-隔离；库级基线为 `155 passed`。0.4.1 修复真实 `fina_indicator` 默认响应省略
-`update_flag` 的问题，真实单股隔离预检和独立 wheel smoke 已通过。但该分支合并前
-master 一直停留在 `0.3.0`，本仓库自己的状态文档曾错误地宣称"tracker 仍锁定
-0.2.0"长达约 12 天——**下次遇到"分支在独立 worktree 里开发+提前建 wheel 给消费方
-用"这种模式，合并回 master 与更新状态文档必须作为同一批工作的收尾动作，不能让
-两者脱节**。
+本仓库版本 `0.5.0`。TuShare 估值、财务、分红、行业和行情 Provider、十年估值分位、
+结构化合同与实时行情新鲜度校验保留；没有生产消费者的 BaoStock/Composite fallback、
+双源实时组合器、占位合同和旧 prompt carrier 已删除。
 
-跨项目当前状态：a-stock-tracker 已于 2026-07-21 完成 TuShare 三域生产强切
-（commit `6c8439f`，用户已确认此为授权变更），实际消费 `a-stock-lib==0.4.1`，
-测试 `263 passed`，此后持续在此基础上迭代（BPS 口径修复、Framework B cohort 自动
-冻结等）。a-stock-research 仍使用 `0.3.0`，尚未跟进升级，是否升级待单独决定。
+跨项目当前状态：a-stock-tracker 与 `/home/lin/a-stock-agent-skills` runtime 均直接消费
+本包。research/monitor/QA 已由后者统一承载，不再是散落在客户端目录中的独立安装。
 Phase 6 仍保持
 report-only；2026-07-02 已把 weekly PM loop 自动化为每周一 09:30 cron，检查
 weekly/daily/outcome 日志、`READY_CRON` 和 `accuracy-report`，并通过 Telegram bot
@@ -103,14 +95,13 @@ weekly/daily/outcome 日志、`READY_CRON` 和 `accuracy-report`，并通过 Tel
 "涉及 cron/Telegram 必须单独确认"的边界写 spec、经 agy 独立审查 PASS 后实现并
 安装 crontab。
 
-`collab-retro` 刚新增"状态文档对齐检查"（Output 1b，config 的
+`collab-retro` 的状态文档对齐检查（Output 1b，config 的
 `project.status_files`），本项目已声明 `CLAUDE.md`/`AGENTS.md`/`README.md` 三个
 文件启用它——以后跑 `collab-retro` 时它会自动检查这三个文件的"当前状态"段落是否
 过时，你不用再靠人工发现。
 
-当前明确遗留项：a-stock-research 的 PM/agent CLI 数据库路径防呆仍待设计，原因是
-历史上绕开 pytest 的 CLI smoke test 误写过生产 `cache.db`。`cmd_checklist` 里 C
-框架的 warn-only 提前反馈 UX 已于 2026-07-02 在 research 侧完成，不再是遗留项。
+research/monitor 的运行、数据库与客户端安装现由 `a-stock-agent-skills` 自己治理；
+本仓不再记录其瞬时任务队列。
 
 ## 文档指针
 

@@ -7,8 +7,11 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from a_stock_lib.market_data import SCHEMA_CHANGED
-from a_stock_lib.providers.tushare_fundamentals import TushareFundamentalsProvider, read_tushare_token
+from a_stock_lib.market_data import MISSING_COLUMNS
+from a_stock_lib.providers.tushare_fundamentals import (
+    TushareFundamentalsProvider,
+    read_tushare_token,
+)
 
 
 class _FakeProClient:
@@ -37,15 +40,16 @@ def test_fetch_industry_map_returns_ok_with_mapping(tmp_path):
     result = provider.fetch_industry_map()
     assert result.status == "ok"
     assert result.value == {"600036": "银行", "002594": "汽车整车"}
+    assert result.request_fingerprint is not None
 
 
 def test_fetch_industry_map_without_token_fails(tmp_path, monkeypatch):
-    # token=None falls back to reading the real ~/a-stock-tracker/.env; stub that
-    # lookup so the test doesn't depend on whether this machine has a real token.
-    monkeypatch.setattr(
-        "a_stock_lib.providers.tushare_fundamentals.read_tushare_token", lambda *a, **k: None
+    monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
+    provider = TushareFundamentalsProvider(
+        token=None,
+        cache_path=tmp_path / "cache.json",
+        env_path=tmp_path / "missing.env",
     )
-    provider = TushareFundamentalsProvider(token=None, cache_path=tmp_path / "cache.json")
     result = provider.fetch_industry_map()
     assert result.status == "failed"
     assert result.error_code == "AUTH_MISSING"
@@ -175,7 +179,7 @@ def test_fetch_industry_map_empty_response_fails(tmp_path):
     provider = TushareFundamentalsProvider(
         token="fake-token",
         cache_path=tmp_path / "cache.json",
-        client=_FakeProClient(pd.DataFrame()),
+        client=_FakeProClient(pd.DataFrame(columns=["ts_code", "industry"])),
     )
     result = provider.fetch_industry_map()
     assert result.status == "failed"
@@ -186,13 +190,15 @@ def test_fetch_industry_map_schema_changed_when_required_columns_missing(tmp_pat
     provider = TushareFundamentalsProvider(
         token="fake-token",
         cache_path=tmp_path / "cache.json",
-        client=_FakeProClient(pd.DataFrame({"code": ["600036.SH"], "industry": ["银行"]})),
+        client=_FakeProClient(
+            pd.DataFrame({"code": ["600036.SH"], "industry": ["银行"]})
+        ),
     )
 
     result = provider.fetch_industry_map()
 
     assert result.status == "failed"
-    assert result.error_code == SCHEMA_CHANGED
+    assert result.error_code == MISSING_COLUMNS
     assert result.value is None
 
 

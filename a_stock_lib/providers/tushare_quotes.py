@@ -16,12 +16,13 @@ from a_stock_lib.market_data import (
     UNKNOWN_ERROR,
     MarketDataResult,
 )
-from a_stock_lib.providers.tushare_fundamentals import DEFAULT_ENV_PATH, read_tushare_token
 from a_stock_lib.providers.tushare_common import (
+    DEFAULT_ENV_PATH,
     TushareRateLimiter,
     call_with_network_retry,
     classify_tushare_exception,
     default_tushare_rate_limiter,
+    read_tushare_token,
 )
 
 DAILY_SOURCE = "tushare.daily"

@@ -26,12 +26,26 @@ from a_stock_lib.market_data import (
     MarketDataResult,
     now,
 )
-from a_stock_lib.providers.tushare_fundamentals import DEFAULT_ENV_PATH, read_tushare_token
-
 T = TypeVar("T")
 Clock = Callable[[], float]
 Sleeper = Callable[[float], None]
 ClientFactory = Callable[[str], Any]
+
+DEFAULT_ENV_PATH = Path.home() / "a-stock-tracker" / ".env"
+
+
+def read_tushare_token(env_path: Path = DEFAULT_ENV_PATH) -> str | None:
+    """Read TUSHARE_TOKEN from an explicit dotenv-style file."""
+    if not env_path.is_file():
+        return None
+    for line in env_path.read_text().splitlines():
+        stripped = line.split("#", 1)[0].strip()
+        if "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        if key.strip() == "TUSHARE_TOKEN":
+            return value.strip().strip('"').strip("'")
+    return None
 
 
 class TushareRateLimiter:

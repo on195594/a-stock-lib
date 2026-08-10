@@ -29,9 +29,9 @@
 已经把 C/D/B 框架周期位置判断接成 fail-closed；如果 parser 默默接受过多变体，会降低提示词
 格式约束的可观察性，也会让错误格式在报告里长期积累。
 
-`prompts/fragments/subjective_evidence.md` 和 `prompts/fragments/cycle_stage.md` 已明确要求
-ASCII 双引号，并把这点写成解析器硬约束。现阶段不应在 `a-stock-research` 本地补临时正则，
-也不应在不更新 canonical prompts 的情况下放宽共享 parser。
+`/home/lin/a-stock-agent-skills/skills/a-stock-research/SKILL.md` 已明确要求 ASCII 双引号，
+并把这点写成解析器硬约束。现阶段不应在下游 runtime 补临时正则；若要放宽语法，先改
+本仓共享 parser 与对抗测试，再同步唯一 canonical Skill。
 
 ## 变更规则
 
@@ -39,7 +39,7 @@ ASCII 双引号，并把这点写成解析器硬约束。现阶段不应在 `a-s
 
 1. 在本仓库更新本 spec，说明新增容错的业务理由和不支持的边界。
 2. 修改 `a_stock_lib/contracts.py`，并补充对抗测试。
-3. 若格式变更会影响 agent 输出，先更新 `prompts/` canonical 源，再用 `scripts/render_prompts.py` 同步下游。
+3. 若格式变更会影响 agent 输出，同步更新 `/home/lin/a-stock-agent-skills/skills/a-stock-research/SKILL.md`；本仓不保存 prompt 副本。
 4. 在 `a-stock-research` 只消费新版本共享 parser，不在本地维护分叉正则。
 
 ## 当前验证锚点

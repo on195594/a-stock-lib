@@ -6,9 +6,7 @@
 
 A 股投研三系统（`a-stock-tracker`/`a-stock-research`/`a-stock-monitor`）共享的市场数据 Provider 原语包，从 `a-stock-tracker/lib/` 剥离。
 
-当前状态（2026-08-02）：本仓库版本 `0.4.1`（`feat/tushare-primary-providers` 分支已于本日 fast-forward 合并回 master——此前该分支在独立 worktree 开发并提前构建 wheel 供 tracker 消费，master 落后生产事实约 12 天，本次合并补齐并同步文档）。新增 TuShare 估值/财务/分红 Provider、十年估值分位计算器、统一限流/错误语义与默认凭据隔离；库级测试 `155 passed`。a-stock-tracker 已于 2026-07-21 完成生产强切（commit `6c8439f`，用户已确认为授权变更），实际消费 `0.4.1`，测试 `263 passed`，此后持续在此基础上迭代（BPS 口径修复、Framework B cohort 自动冻结等）。a-stock-research 仍停留在 `0.3.0`，尚未跟进升级，是否升级待单独决定。
-
-Phase 3b（周期位置判断结构化校验接线，2026-07-01同日完成）：`prompts/` 渲染的 `AGENTS.md` 首次真正落地到 a-stock-research 并验证 codex 会自动读取（此前只验证过 agy）；`contracts.parse_cycle_stage_tag` 已接入 a-stock-research 的 `cmd_set_analysis`（不是 `cmd_checklist`——`cmd_checklist` 只对 A/C/F 框架生效，而周期位置判断必做的是 C/D/B，二者交集仅 C 一个框架，接 checklist 无法形成对 B/D 的真正约束），C/D/B 框架均为 fail-closed。这部分代码改动全部发生在 a-stock-research 仓库，本仓库自身代码未变。2026-07-02 research 已补上 `cmd_checklist` 里 C 框架的 warn-only 提前反馈 UX。
+当前状态（2026-08-10）：本仓库版本 `0.5.0`。已删除没有生产消费者的 BaoStock/Composite fallback、双源实时行情组合器、占位合同和旧 prompt carrier；保留 TuShare 行情/行业/估值/财务/分红 Provider、估值分位、结构化合同和实时行情新鲜度校验。`a-stock-tracker` 与统一的 `a-stock-agent-skills` runtime 均消费本包；Agent prompt、rubric 和安装生命周期只归 `/home/lin/a-stock-agent-skills` 所有。
 
 权威文档：
 - 架构决策 → `docs/design/2026-06-22-three-system-restructure-design.md`
@@ -28,7 +26,7 @@ pytest tests/ -v
 
 - **不要直接修改 `~/a-stock-tracker/` 内代码** —— 虽然 tracker 已经完成切换并依赖本包，但因为 tracker 工作区当前有既有未提交改动，在没有 PM 明确授权的情况下，禁止直接修改 tracker。
 - **不要硬编码 `TUSHARE_TOKEN`** —— Provider 的 token 优先级为构造参数显式传入 > 环境变量 `TUSHARE_TOKEN` > `read_tushare_token()` 从 `~/a-stock-tracker/.env` 读取（路径可通过 `env_path` 覆盖）。`tushare_quotes.py` 已在 Phase 3 统一到这个模式。
-- **不要在测试里发起真实网络请求** —— 第三方 SDK（`tushare`/`baostock`）的 import 必须留在方法内部（懒加载），测试通过给 Provider 构造函数传入 mock `client` 参数来隔离
+- **不要在测试里发起真实网络请求** —— `tushare` 的 import 必须留在方法内部（懒加载），测试通过给 Provider 构造函数传入 mock `client` 参数来隔离
 - **所有新函数要有类型注解，不要裸 `raise Exception`** —— 失败路径统一返回 `MarketDataResult(status="failed", error_code=...)`
 - **新增依赖前先确认必要性**，不要静默引入 `pyproject.toml` 之外的包
 

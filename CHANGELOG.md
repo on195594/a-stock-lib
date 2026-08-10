@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0] — 2026-08-10
+
+- 删除已由 TuShare-only 生产路径取代的 BaoStock Provider、`CompositeMarketDataProvider`、旧 bars normalizer/异常 helper 与 `baostock` optional dependency。
+- 删除无消费者的双源实时行情组合器，保留 `QuoteObservation`、交易时段判断和单源行情新鲜度校验。
+- 删除 `FrameworkDecision` 占位类型，以及已经迁移到 `/home/lin/a-stock-agent-skills` 的 prompt fragments、manifest 和 renderer。
+- `TushareFundamentalsProvider` 改用统一的 `TushareProviderBase`，共享 token、限流、typed retry、错误分类和请求指纹。
+- 更新 tracker 与 portable agent runtime 的版本、依赖和发布流程；历史设计/计划文档显式标为快照或 superseded。
+
 ## [0.4.1] — 2026-07-21
 
 - 修复真实 `fina_indicator` 默认响应省略 `update_flag` 导致 Provider fail-closed 的问题；请求现显式声明生产 materialization 所需字段，包括 `update_flag`、ROE、净利润同比、资产负债率、毛利率和 BPS。
