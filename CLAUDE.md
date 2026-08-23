@@ -4,7 +4,7 @@
 
 A 股投研三系统（`a-stock-tracker`/`a-stock-research`/`a-stock-monitor`）共享的市场数据 Provider 原语包。从 `a-stock-tracker/lib/` 剥离，目标是消灭三套重复的行情/基本面抓取实现。
 
-**当前状态（2026-08-10）**：本仓库版本 `0.5.0`。已删除没有生产消费者的 BaoStock/Composite fallback、双源实时行情组合器、占位合同和旧 prompt carrier；保留 TuShare 行情/行业/估值/财务/分红 Provider、估值分位、结构化合同和实时行情新鲜度校验。**a-stock-tracker** 与统一的 **`a-stock-agent-skills` runtime** 均消费本包；Agent prompt、rubric 和安装生命周期只归 `/home/lin/a-stock-agent-skills` 所有。
+**当前状态（2026-08-23）**：本仓库版本 `0.5.2`。保留 TuShare 行情/行业/估值/财务/分红 Provider、估值分位、结构化合同和实时行情新鲜度校验；行情非法值与未来日期 fail-closed，行业缓存写失败返回结构化降级。**a-stock-tracker** 与统一的 **`a-stock-agent-skills` runtime** 是两个直接消费者；Agent prompt、rubric 和安装生命周期只归 `/home/lin/a-stock-agent-skills` 所有。
 
 **文档指针**：
 - 架构决策 / 为什么这么设计 → `docs/design/2026-06-22-three-system-restructure-design.md`

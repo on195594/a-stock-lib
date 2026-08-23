@@ -3,7 +3,14 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from a_stock_lib.market_data import MISSING_COLUMNS, RATE_LIMITED, SCHEMA_CHANGED, TIMEOUT, UNKNOWN_ERROR
+from a_stock_lib.market_data import (
+    MISSING_COLUMNS,
+    RATE_LIMITED,
+    SCHEMA_CHANGED,
+    SOURCE_STALE,
+    TIMEOUT,
+    UNKNOWN_ERROR,
+)
 from a_stock_lib.providers.tushare_quotes import (
     DAILY_SOURCE,
     TRADE_CAL_SOURCE,
@@ -18,6 +25,14 @@ class _TradeCalendarClient:
         self._value = value
 
     def trade_cal(self, **kwargs):
+        return self._value
+
+
+class _DailyClient:
+    def __init__(self, value: pd.DataFrame) -> None:
+        self._value = value
+
+    def daily(self, **kwargs):
         return self._value
 
 
@@ -70,6 +85,92 @@ def test_tushare_normalizer_requires_ohlc_for_score_price():
 
     assert result.status == "failed"
     assert result.error_code == MISSING_COLUMNS
+
+
+@pytest.mark.parametrize("bad_close", [float("nan"), float("inf"), 0.0, -1.0])
+def test_tushare_normalizer_rejects_invalid_prices(bad_close: float):
+    result = _normalize_tushare_bars(
+        pd.DataFrame(
+            {
+                "trade_date": ["20260623"],
+                "open": [10.0],
+                "high": [11.0],
+                "low": [9.0],
+                "close": [bad_close],
+            }
+        ),
+        DAILY_SOURCE,
+        "score_price",
+    )
+
+    assert result.status == "failed"
+    assert result.error_code == SCHEMA_CHANGED
+
+
+def test_fetch_score_price_rejects_future_observation():
+    provider = TushareMarketDataProvider(
+        token="fake-token",
+        client=_DailyClient(
+            pd.DataFrame(
+                {
+                    "trade_date": ["20260624"],
+                    "open": [10.0],
+                    "high": [11.0],
+                    "low": [9.0],
+                    "close": [10.5],
+                    "vol": [100.0],
+                }
+            )
+        ),
+    )
+
+    result = provider.fetch_score_price("600036", "2026-06-23")
+
+    assert result.status == "failed"
+    assert result.error_code == SOURCE_STALE
+    assert result.value is None
+
+
+def test_fetch_daily_bars_range_rejects_observation_after_end_date():
+    provider = TushareMarketDataProvider(
+        token="fake-token",
+        client=_DailyClient(
+            pd.DataFrame(
+                {
+                    "trade_date": ["20260624"],
+                    "open": [10.0],
+                    "high": [11.0],
+                    "low": [9.0],
+                    "close": [10.5],
+                    "vol": [100.0],
+                }
+            )
+        ),
+    )
+
+    result = provider.fetch_daily_bars_range("600036", "2026-06-01", "2026-06-23")
+
+    assert result.status == "failed"
+    assert result.error_code == SOURCE_STALE
+
+
+def test_tushare_normalizer_rejects_inconsistent_ohlc():
+    result = _normalize_tushare_bars(
+        pd.DataFrame(
+            {
+                "trade_date": ["20260623"],
+                "open": [10.0],
+                "high": [9.0],
+                "low": [8.0],
+                "close": [10.5],
+            }
+        ),
+        DAILY_SOURCE,
+        "score_price",
+    )
+
+    assert result.status == "failed"
+    assert result.error_code == SCHEMA_CHANGED
 
 
 def test_tushare_exception_result_classifies_time_limit_as_timeout():

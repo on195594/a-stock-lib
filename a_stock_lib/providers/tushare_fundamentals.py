@@ -58,7 +58,19 @@ class TushareFundamentalsProvider(TushareProviderBase):
             for _, row in clean_df.iterrows()
             if (industry := str(row["industry"]).strip())
         }
-        self._write_cache(industry_map)
+        try:
+            self._write_cache(industry_map)
+        except OSError as exc:
+            return MarketDataResult(
+                industry_map,
+                "degraded",
+                result.source,
+                result.fetched_at,
+                fallback_reason="CACHE_WRITE_FAILED",
+                error_message=str(exc),
+                request_fingerprint=result.request_fingerprint,
+                row_count=len(industry_map),
+            )
         return MarketDataResult(
             industry_map,
             result.status,

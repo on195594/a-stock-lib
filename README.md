@@ -6,9 +6,9 @@ A 股投研三系统（`a-stock-tracker` 评分管道 / `a-stock-research` 新�
 
 详见设计文档：[`docs/design/2026-06-22-three-system-restructure-design.md`](docs/design/2026-06-22-three-system-restructure-design.md)。核心动机：三系统重复实现行情 Provider、AKShare 行业接口长期不稳定、止损系数差异化依赖脆弱的字符串反推框架。
 
-## 当前状态（2026-08-10）
+## 当前状态（2026-08-23）
 
-当前版本 `0.5.1`。在 `0.5.0` 的 TuShare 行情、行业、估值、财务和分红 Provider 基线上，为 `fina_indicator` 增加收入及扣非归母净利润同比字段。`a-stock-agent-skills` runtime 与 `a-stock-tracker` 已于 2026-08-23 分别完成 `0.5.1` 消费者切换和验证。
+当前版本 `0.5.2`。在 `0.5.1` 基线上收紧行情非法值与未来日期边界，行业缓存写失败改为结构化降级，并修复包版本身份不一致。两个消费者在显式升级前仍保持已验证的 `0.5.1`。
 
 下游为 `a-stock-tracker` 与 `/home/lin/a-stock-agent-skills`；后者是 research/monitor/QA 与 runtime 的唯一 canonical carrier。
 

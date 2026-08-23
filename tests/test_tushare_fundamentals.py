@@ -175,6 +175,25 @@ def test_write_cache_preserves_existing_cache_when_replace_fails(tmp_path, monke
     assert json.loads(cache_path.read_text()) == existing_payload
 
 
+def test_fetch_industry_map_degrades_when_cache_write_fails(tmp_path, monkeypatch):
+    provider = TushareFundamentalsProvider(
+        token="fake-token",
+        cache_path=tmp_path / "cache.json",
+        client=_FakeProClient(_sample_df()),
+    )
+
+    def fail_write(_value: dict[str, str]) -> None:
+        raise OSError("disk full")
+
+    monkeypatch.setattr(provider, "_write_cache", fail_write)
+
+    result = provider.fetch_industry_map()
+
+    assert result.status == "degraded"
+    assert result.value == {"600036": "银行", "002594": "汽车整车"}
+    assert result.fallback_reason == "CACHE_WRITE_FAILED"
+
+
 def test_fetch_industry_map_empty_response_fails(tmp_path):
     provider = TushareFundamentalsProvider(
         token="fake-token",

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import os
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -13,6 +14,7 @@ from a_stock_lib.market_data import (
     INSUFFICIENT_WINDOW,
     MISSING_COLUMNS,
     SCHEMA_CHANGED,
+    SOURCE_STALE,
     UNKNOWN_ERROR,
     MarketDataResult,
 )
@@ -58,18 +60,7 @@ class TushareMarketDataProvider:
         result = self._fetch_daily(code, start_date, _compact(score_date), "score_price")
         if result.value is None or result.value.empty:
             return _scalar_failure(result, DAILY_SOURCE)
-        row = result.value.iloc[-1]
-        freshness = (_score_dt - _parse_date(str(row["date"]))).days
-        return MarketDataResult(
-            float(row["close"]),
-            "ok" if freshness == 0 else "degraded",
-            result.source,
-            result.fetched_at,
-            fallback_reason=None if freshness == 0 else "NEAREST_AVAILABLE_PRICE",
-            freshness_days=freshness,
-            adjusted=result.adjusted,
-            volume_unit=result.volume_unit,
-        )
+        return _scalar_price_result(result, _score_dt)
 
     def fetch_l3_bars(self, code: str, end_date: str, window: int) -> MarketDataResult[pd.DataFrame]:
         try:
@@ -104,18 +95,7 @@ class TushareMarketDataProvider:
         result = self._fetch_daily(code, start_date, _compact(target_date), "outcome_price")
         if result.value is None or result.value.empty:
             return _scalar_failure(result, DAILY_SOURCE)
-        row = result.value.iloc[-1]
-        freshness = (_target_dt - _parse_date(str(row["date"]))).days
-        return MarketDataResult(
-            float(row["close"]),
-            "ok" if freshness == 0 else "degraded",
-            result.source,
-            result.fetched_at,
-            fallback_reason=None if freshness == 0 else "NEAREST_AVAILABLE_PRICE",
-            freshness_days=freshness,
-            adjusted=result.adjusted,
-            volume_unit=result.volume_unit,
-        )
+        return _scalar_price_result(result, _target_dt)
 
     def _retry_call(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         return call_with_network_retry(func, *args, limiter=self._rate_limiter, **kwargs)
@@ -182,7 +162,23 @@ class TushareMarketDataProvider:
             )
         except Exception as exc:
             return _exception_result(DAILY_SOURCE, exc, self.token)
-        return _normalize_tushare_bars(df, DAILY_SOURCE, purpose)
+        result = _normalize_tushare_bars(df, DAILY_SOURCE, purpose)
+        if result.value is None:
+            return result
+        lower = _format_tushare_date(start_date)
+        upper = _format_tushare_date(end_date)
+        if result.value["date"].min() < lower or result.value["date"].max() > upper:
+            return MarketDataResult(
+                None,
+                "failed",
+                result.source,
+                result.fetched_at,
+                error_code=SOURCE_STALE,
+                error_message="source observation is outside requested date range",
+                adjusted=result.adjusted,
+                volume_unit=result.volume_unit,
+            )
+        return result
 
     def _client_or_failure(self, source: str) -> Any | MarketDataResult[Any]:
         if not self.token:
@@ -268,6 +264,18 @@ def _normalize_tushare_bars(df: Any, source: str, purpose: str) -> MarketDataRes
         normalized["date"] = normalized["date"].map(_format_tushare_date)
         for col in [c for c in ["open", "high", "low", "close", "volume"] if c in normalized.columns]:
             normalized[col] = pd.to_numeric(normalized[col], errors="raise")
+            invalid = normalized[col].map(
+                lambda value: not math.isfinite(float(value)) or value < 0 or (col != "volume" and value == 0)
+            )
+            if invalid.any():
+                raise ValueError(f"invalid {col} value")
+        inconsistent = (
+            (normalized["low"] > normalized["high"])
+            | ~normalized["open"].between(normalized["low"], normalized["high"])
+            | ~normalized["close"].between(normalized["low"], normalized["high"])
+        )
+        if inconsistent.any():
+            raise ValueError("inconsistent OHLC values")
     except Exception as exc:
         return MarketDataResult(None, "failed", source, fetched_at, error_code=SCHEMA_CHANGED, error_message=str(exc))
     return MarketDataResult(
@@ -288,6 +296,35 @@ def _scalar_failure(result: MarketDataResult[pd.DataFrame], source: str) -> Mark
         result.fetched_at,
         error_code=result.error_code,
         error_message=result.error_message,
+        adjusted=result.adjusted,
+        volume_unit=result.volume_unit,
+    )
+
+
+def _scalar_price_result(
+    result: MarketDataResult[pd.DataFrame], requested_date: date
+) -> MarketDataResult[float]:
+    assert result.value is not None and not result.value.empty
+    row = result.value.iloc[-1]
+    freshness = (requested_date - _parse_date(str(row["date"]))).days
+    if freshness < 0:
+        return MarketDataResult(
+            None,
+            "failed",
+            result.source,
+            result.fetched_at,
+            error_code=SOURCE_STALE,
+            error_message="source observation is after requested date",
+            adjusted=result.adjusted,
+            volume_unit=result.volume_unit,
+        )
+    return MarketDataResult(
+        float(row["close"]),
+        "ok" if freshness == 0 else "degraded",
+        result.source,
+        result.fetched_at,
+        fallback_reason=None if freshness == 0 else "NEAREST_AVAILABLE_PRICE",
+        freshness_days=freshness,
         adjusted=result.adjusted,
         volume_unit=result.volume_unit,
     )
