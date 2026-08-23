@@ -8,7 +8,7 @@ A 股投研三系统（`a-stock-tracker` 评分管道 / `a-stock-research` 新�
 
 ## 当前状态（2026-08-23）
 
-当前版本 `0.5.3`。在 `0.5.2` 基线上补齐请求与上游观测日期的严格解析，非法日期和逆序区间 fail-closed；`a-stock-tracker` 与 `a-stock-agent-skills` runtime 均已完成 `0.5.3` 切换和回读。
+当前仓库版本 `0.6.0`：TuShare 行情统一复用 Provider base，行情/行业 metadata 完整化，并恢复 A—F 六框架的 report-only 基本面评分纯函数。生产消费者仍运行已验证的 `0.5.3`；`0.6.0` 尚未部署。
 
 下游为 `a-stock-tracker` 与 `/home/lin/a-stock-agent-skills`；后者是 research/monitor/QA 与 runtime 的唯一 canonical carrier。
 
@@ -17,6 +17,8 @@ A 股投研三系统（`a-stock-tracker` 评分管道 / `a-stock-research` 新�
 ```
 a_stock_lib/
   market_data.py          # MarketDataResult / MarketDataProvider / 错误码常量
+  contracts.py            # 六框架路由、周期与主观证据 typed contract
+  framework_scoring.py    # A-F 基本面60分 report-only 纯函数
   valuation.py            # 十年/月末估值分位纯函数
   providers/
     tushare_quotes.py      # 行情主源（需 TUSHARE_TOKEN）
@@ -45,6 +47,10 @@ pip install /path/to/a_stock_lib-<version>-py3-none-any.whl
 按需安装 TuShare 依赖：`pip install -e ".[tushare]"`。
 
 TuShare 生产主源 API 与字段口径见 [`docs/TUSHARE_PRIMARY_PROVIDERS.md`](docs/TUSHARE_PRIMARY_PROVIDERS.md)。
+
+## 六框架评分（report-only）
+
+`a_stock_lib.framework_scoring.score_fundamentals()` 接受已结构化的客观指标、`SubjectiveAssessment` 和可选周期阶段，返回每个维度得分、60 分机械小计、缺失输入和红线。`complete=false` 或 `blocked=true` 的结果不得用于投资动作；本模块不写数据库、不计算择时/仓位，也未接入生产 tracker。
 
 ## 测试
 

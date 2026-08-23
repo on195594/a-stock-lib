@@ -11,10 +11,12 @@ from a_stock_lib.market_data import MarketDataResult, now
 from a_stock_lib.providers.tushare_common import (
     DEFAULT_ENV_PATH,
     TushareProviderBase,
+    request_fingerprint,
     read_tushare_token as read_tushare_token,
 )
 
 TUSHARE_FUNDAMENTALS_SOURCE = "tushare.stock_basic"
+_INDUSTRY_PARAMS = {"exchange": "", "list_status": "L", "fields": "ts_code,industry"}
 DEFAULT_CACHE_PATH = (
     Path.home() / ".cache" / "a_stock_lib" / "tushare_industry_map.json"
 )
@@ -46,7 +48,7 @@ class TushareFundamentalsProvider(TushareProviderBase):
         result = self._request_frame(
             TUSHARE_FUNDAMENTALS_SOURCE,
             "stock_basic",
-            {"exchange": "", "list_status": "L", "fields": "ts_code,industry"},
+            _INDUSTRY_PARAMS,
             {"ts_code", "industry"},
         )
         if result.value is None:
@@ -68,6 +70,8 @@ class TushareFundamentalsProvider(TushareProviderBase):
                 result.fetched_at,
                 fallback_reason="CACHE_WRITE_FAILED",
                 error_message=str(exc),
+                freshness_days=0,
+                source_as_of=result.fetched_at[:10],
                 request_fingerprint=result.request_fingerprint,
                 row_count=len(industry_map),
             )
@@ -76,6 +80,8 @@ class TushareFundamentalsProvider(TushareProviderBase):
             result.status,
             result.source,
             result.fetched_at,
+            freshness_days=0,
+            source_as_of=result.fetched_at[:10],
             request_fingerprint=result.request_fingerprint,
             row_count=len(industry_map),
         )
@@ -94,6 +100,9 @@ class TushareFundamentalsProvider(TushareProviderBase):
                 TUSHARE_FUNDAMENTALS_SOURCE,
                 payload["fetched_at"],
                 freshness_days=int(age_seconds / 86400),
+                source_as_of=payload["fetched_at"][:10],
+                request_fingerprint=request_fingerprint("stock_basic", _INDUSTRY_PARAMS),
+                row_count=len(payload["industry_map"]),
             )
         except Exception:
             return None

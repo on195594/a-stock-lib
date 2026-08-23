@@ -292,3 +292,30 @@ def test_fetch_outcome_price_rejects_malformed_date():
     assert result.error_code == INVALID_ARGUMENT
     assert result.value is None
     assert result.error_message is not None
+
+
+def test_fetch_score_price_preserves_complete_request_metadata():
+    provider = TushareMarketDataProvider(
+        token="fake-token",
+        client=_DailyClient(
+            pd.DataFrame(
+                {
+                    "trade_date": ["20260623"],
+                    "open": [10.0],
+                    "high": [11.0],
+                    "low": [9.0],
+                    "close": [10.5],
+                    "vol": [100.0],
+                }
+            )
+        ),
+    )
+
+    result = provider.fetch_score_price("600036", "2026-06-23")
+
+    assert result.status == "ok"
+    assert result.value == 10.5
+    assert result.freshness_days == 0
+    assert result.source_as_of == "2026-06-23"
+    assert result.request_fingerprint
+    assert result.row_count == 1

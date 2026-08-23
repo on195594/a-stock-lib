@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-import os
+from dataclasses import replace
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable
@@ -9,23 +9,20 @@ from typing import Any, Callable
 import pandas as pd
 
 from a_stock_lib.market_data import (
-    AUTH_MISSING,
     EMPTY_RESPONSE,
     INVALID_ARGUMENT,
     INSUFFICIENT_WINDOW,
     MISSING_COLUMNS,
     SCHEMA_CHANGED,
     SOURCE_STALE,
-    UNKNOWN_ERROR,
     MarketDataResult,
 )
 from a_stock_lib.providers.tushare_common import (
     DEFAULT_ENV_PATH,
     TushareRateLimiter,
-    call_with_network_retry,
+    TushareProviderBase,
     classify_tushare_exception,
-    default_tushare_rate_limiter,
-    read_tushare_token,
+    replace_frame_result,
 )
 
 DAILY_SOURCE = "tushare.daily"
@@ -34,7 +31,7 @@ TRADE_CAL_SOURCE = "tushare.trade_cal"
 TUSHARE_VOLUME_UNIT = "hand"
 
 
-class TushareMarketDataProvider:
+class TushareMarketDataProvider(TushareProviderBase):
     """Tushare Pro implementation of the market-data provider boundary."""
 
     def __init__(
@@ -45,11 +42,12 @@ class TushareMarketDataProvider:
         env_path: Path = DEFAULT_ENV_PATH,
         rate_limiter: TushareRateLimiter | None = None,
     ) -> None:
-        self.token = token if token is not None else os.environ.get("TUSHARE_TOKEN") or read_tushare_token(env_path)
-        self._client = client
-        self._client_factory = client_factory
-        self._rate_limiter = rate_limiter or (
-            default_tushare_rate_limiter() if client is None else TushareRateLimiter(10**9)
+        super().__init__(
+            token=token,
+            client=client,
+            client_factory=client_factory,
+            env_path=env_path,
+            rate_limiter=rate_limiter,
         )
 
     def fetch_score_price(self, code: str, score_date: str) -> MarketDataResult[float]:
@@ -81,6 +79,11 @@ class TushareMarketDataProvider:
                 result.fetched_at,
                 error_code=INSUFFICIENT_WINDOW,
                 error_message=f"expected at least {window} rows, got {len(result.value)}",
+                adjusted=result.adjusted,
+                volume_unit=result.volume_unit,
+                source_as_of=result.source_as_of,
+                request_fingerprint=result.request_fingerprint,
+                row_count=result.row_count,
             )
         return result
 
@@ -105,19 +108,20 @@ class TushareMarketDataProvider:
             return _scalar_failure(result, DAILY_SOURCE)
         return _scalar_price_result(result, _target_dt)
 
-    def _retry_call(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
-        return call_with_network_retry(func, *args, limiter=self._rate_limiter, **kwargs)
-
     def fetch_index_bars(self, symbol: str) -> MarketDataResult[pd.DataFrame]:
-        client_result = self._client_or_failure(INDEX_DAILY_SOURCE)
-        if isinstance(client_result, MarketDataResult):
-            return client_result
-        client = client_result
         try:
-            df = self._retry_call(client.index_daily, ts_code=to_tushare_index_code(symbol))
-        except Exception as exc:
-            return _exception_result(INDEX_DAILY_SOURCE, exc, self.token)
-        return _normalize_tushare_bars(df, INDEX_DAILY_SOURCE, "index_bars")
+            ts_code = to_tushare_index_code(symbol)
+        except ValueError as exc:
+            return _invalid_argument(INDEX_DAILY_SOURCE, exc)
+        result = self._request_frame(
+            INDEX_DAILY_SOURCE,
+            "index_daily",
+            {"ts_code": ts_code},
+            {"trade_date", "open", "high", "low", "close"},
+        )
+        return _normalize_requested_bars(
+            result, "index_bars", date.fromisoformat(result.fetched_at[:10])
+        )
 
     def fetch_trade_calendar(self, start_date: str, end_date: str) -> MarketDataResult[pd.DataFrame]:
         try:
@@ -127,57 +131,53 @@ class TushareMarketDataProvider:
                 raise ValueError("start_date must not be after end_date")
         except ValueError as exc:
             return _invalid_argument(TRADE_CAL_SOURCE, exc)
-        client_result = self._client_or_failure(TRADE_CAL_SOURCE)
-        if isinstance(client_result, MarketDataResult):
-            return client_result
-        client = client_result
+        result = self._request_frame(
+            TRADE_CAL_SOURCE,
+            "trade_cal",
+            {
+                "exchange": "SSE",
+                "is_open": "1",
+                "start_date": _compact(start),
+                "end_date": _compact(end),
+                "fields": "cal_date",
+            },
+            {"cal_date"},
+        )
+        if result.value is None:
+            return result
         try:
-            df = self._retry_call(
-                client.trade_cal,
-                exchange="SSE",
-                is_open="1",
-                start_date=_compact(start),
-                end_date=_compact(end),
-                fields="cal_date",
-            )
+            normalized = result.value[["cal_date"]].rename(columns={"cal_date": "date"}).copy()
+            normalized["date"] = normalized["date"].map(_format_tushare_date)
+            normalized = normalized.sort_values("date").reset_index(drop=True)
         except Exception as exc:
-            return _exception_result(TRADE_CAL_SOURCE, exc, self.token)
-        fetched_at = _now()
-        if df is None:
-            return MarketDataResult(None, "failed", TRADE_CAL_SOURCE, fetched_at, error_code=EMPTY_RESPONSE)
-        if not isinstance(df, pd.DataFrame):
-            return MarketDataResult(
-                None,
-                "failed",
-                TRADE_CAL_SOURCE,
-                fetched_at,
-                error_code=SCHEMA_CHANGED,
-                error_message=f"expected pandas.DataFrame, got {type(df).__name__}",
-            )
-        if df.empty:
-            return MarketDataResult(None, "failed", TRADE_CAL_SOURCE, fetched_at, error_code=EMPTY_RESPONSE)
-        if "cal_date" not in df.columns:
-            return MarketDataResult(None, "failed", TRADE_CAL_SOURCE, fetched_at, error_code=MISSING_COLUMNS)
-        normalized = df[["cal_date"]].rename(columns={"cal_date": "date"}).copy()
-        normalized["date"] = normalized["date"].map(_format_tushare_date)
-        return MarketDataResult(normalized.sort_values("date").reset_index(drop=True), "ok", TRADE_CAL_SOURCE, fetched_at)
+            return _schema_failure(result, exc)
+        normalized_result = replace_frame_result(result, normalized, normalized["date"].max())
+        freshness = max(
+            0,
+            (
+                date.fromisoformat(result.fetched_at[:10])
+                - date.fromisoformat(str(normalized_result.source_as_of))
+            ).days,
+        )
+        return replace(normalized_result, freshness_days=freshness)
 
     def _fetch_daily(self, code: str, start_date: str, end_date: str, purpose: str) -> MarketDataResult[pd.DataFrame]:
-        client_result = self._client_or_failure(DAILY_SOURCE)
-        if isinstance(client_result, MarketDataResult):
-            return client_result
-        client = client_result
         try:
-            df = self._retry_call(
-                client.daily,
-                ts_code=to_tushare_stock_code(code),
-                start_date=start_date,
-                end_date=end_date,
-                fields="ts_code,trade_date,open,high,low,close,vol,amount",
-            )
-        except Exception as exc:
-            return _exception_result(DAILY_SOURCE, exc, self.token)
-        result = _normalize_tushare_bars(df, DAILY_SOURCE, purpose)
+            ts_code = to_tushare_stock_code(code)
+        except ValueError as exc:
+            return _invalid_argument(DAILY_SOURCE, exc)
+        raw = self._request_frame(
+            DAILY_SOURCE,
+            "daily",
+            {
+                "ts_code": ts_code,
+                "start_date": start_date,
+                "end_date": end_date,
+                "fields": "ts_code,trade_date,open,high,low,close,vol,amount",
+            },
+            {"trade_date", "open", "high", "low", "close"},
+        )
+        result = _normalize_requested_bars(raw, purpose, _parse_date(end_date))
         if result.value is None:
             return result
         lower = _format_tushare_date(start_date)
@@ -192,30 +192,11 @@ class TushareMarketDataProvider:
                 error_message="source observation is outside requested date range",
                 adjusted=result.adjusted,
                 volume_unit=result.volume_unit,
+                source_as_of=result.source_as_of,
+                request_fingerprint=result.request_fingerprint,
+                row_count=result.row_count,
             )
         return result
-
-    def _client_or_failure(self, source: str) -> Any | MarketDataResult[Any]:
-        if not self.token:
-            return MarketDataResult(
-                None,
-                "failed",
-                source,
-                _now(),
-                error_code=AUTH_MISSING,
-                error_message="TUSHARE_TOKEN is not configured",
-            )
-        if self._client is None:
-            try:
-                if self._client_factory is not None:
-                    self._client = self._client_factory(self.token)
-                else:
-                    import tushare as ts
-
-                    self._client = ts.pro_api(self.token)
-            except Exception as exc:
-                return _exception_result(source, exc, self.token)
-        return self._client
 
 
 def to_tushare_stock_code(code: str) -> str:
@@ -303,6 +284,55 @@ def _normalize_tushare_bars(df: Any, source: str, purpose: str) -> MarketDataRes
     )
 
 
+def _normalize_requested_bars(
+    raw: MarketDataResult[pd.DataFrame],
+    purpose: str,
+    reference_date: date,
+) -> MarketDataResult[pd.DataFrame]:
+    if raw.value is None:
+        return raw
+    normalized = _normalize_tushare_bars(raw.value, raw.source, purpose)
+    if normalized.value is None:
+        return MarketDataResult(
+            None,
+            "failed",
+            raw.source,
+            raw.fetched_at,
+            error_code=normalized.error_code,
+            error_message=normalized.error_message,
+            request_fingerprint=raw.request_fingerprint,
+            row_count=raw.row_count,
+        )
+    source_as_of = str(normalized.value["date"].max())
+    return MarketDataResult(
+        normalized.value,
+        raw.status,
+        raw.source,
+        raw.fetched_at,
+        adjusted=normalized.adjusted,
+        volume_unit=normalized.volume_unit,
+        freshness_days=max(0, (reference_date - date.fromisoformat(source_as_of)).days),
+        source_as_of=source_as_of,
+        request_fingerprint=raw.request_fingerprint,
+        row_count=len(normalized.value),
+    )
+
+
+def _schema_failure(
+    result: MarketDataResult[pd.DataFrame], exc: Exception
+) -> MarketDataResult[pd.DataFrame]:
+    return MarketDataResult(
+        None,
+        "failed",
+        result.source,
+        result.fetched_at,
+        error_code=SCHEMA_CHANGED,
+        error_message=str(exc),
+        request_fingerprint=result.request_fingerprint,
+        row_count=result.row_count,
+    )
+
+
 def _scalar_failure(result: MarketDataResult[pd.DataFrame], source: str) -> MarketDataResult[float]:
     return MarketDataResult(
         None,
@@ -313,6 +343,9 @@ def _scalar_failure(result: MarketDataResult[pd.DataFrame], source: str) -> Mark
         error_message=result.error_message,
         adjusted=result.adjusted,
         volume_unit=result.volume_unit,
+        source_as_of=result.source_as_of,
+        request_fingerprint=result.request_fingerprint,
+        row_count=result.row_count,
     )
 
 
@@ -343,6 +376,9 @@ def _scalar_price_result(
             error_message="source observation is after requested date",
             adjusted=result.adjusted,
             volume_unit=result.volume_unit,
+            source_as_of=result.source_as_of,
+            request_fingerprint=result.request_fingerprint,
+            row_count=result.row_count,
         )
     return MarketDataResult(
         float(row["close"]),
@@ -353,6 +389,9 @@ def _scalar_price_result(
         freshness_days=freshness,
         adjusted=result.adjusted,
         volume_unit=result.volume_unit,
+        source_as_of=result.source_as_of,
+        request_fingerprint=result.request_fingerprint,
+        row_count=result.row_count,
     )
 
 

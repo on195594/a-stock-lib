@@ -201,6 +201,9 @@ class TushareProviderBase:
         self._client_factory = client_factory
         self._rate_limiter = rate_limiter or (_GLOBAL_RATE_LIMITER if client is None else TushareRateLimiter(10**9))
 
+    def _retry_call(self, func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+        return call_with_network_retry(func, *args, limiter=self._rate_limiter, **kwargs)
+
     def _request_frame(
         self,
         source: str,
