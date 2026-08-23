@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import math
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
@@ -43,19 +44,34 @@ class FrameworkScore:
 
 Metrics = Mapping[str, Any]
 RULE_VERSION = "2026-08-23.v1"
-_RULE_SIGNATURES = {
-    FrameworkKey.A: "A|roe15:15/10|growth10:15/8|debt10:40/60|margin10|moat10|position5",
-    FrameworkKey.B: "B|roe15:13/9|nim10|npl15:1/1.5|provision10:300/150|moat5|position5",
-    FrameworkKey.C: "C|roe10:12/8|profit10|debt10:45/65|yield15:5/3|reserve10|position5|growth-branch",
-    FrameworkKey.D: "D|roe-percentile10:30/50|volume10:5/0|debt10:55/70|yield15:4/2.5|franchise10|position5",
-    FrameworkKey.E: "E|roe15:20/12|growth10:15/8|margin15:50/30|inventory10:60/120|brand5|position5",
-    FrameworkKey.F: "F|revenue15:30/15|margin15:50/30|rd10:15/8|orders10|cash5|position5",
-}
+_SHARED_RULE_FUNCTIONS = (
+    "score_fundamentals",
+    "_number",
+    "_boolean",
+    "_missing",
+    "_higher",
+    "_lower",
+    "_subjective",
+    "_scaled",
+    "_common_red_flags",
+)
 
 
 def framework_rule_hash(framework: FrameworkKey | str) -> str:
     key = framework if isinstance(framework, FrameworkKey) else FrameworkKey(framework.upper())
-    payload = f"{RULE_VERSION}|{_RULE_SIGNATURES[key]}"
+    scorer_name = f"_score_{key.value.lower()}"
+    names = (*_SHARED_RULE_FUNCTIONS, scorer_name)
+    subjects = ",".join(sorted(category.value for category in required_subjective_categories(key)))
+    payload = "\n".join(
+        [
+            RULE_VERSION,
+            key.value,
+            subjects,
+            inspect.getsource(DimensionScore),
+            inspect.getsource(FrameworkScore),
+            *(inspect.getsource(globals()[name]) for name in names),
+        ]
+    )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 

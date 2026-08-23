@@ -1,52 +1,16 @@
-# AGENTS.md — a-stock-lib
+# a-stock-lib repository rules
 
-跨 agent CLI（codex / agy / 其他）在本仓库工作时的约束。与 `CLAUDE.md` 内容实质相同，去掉了 Claude 专属表述。
+This repository owns reusable market-data Provider primitives shared by `a-stock-tracker` and `a-stock-agent-skills`. Current code and tests are authoritative. Read `README.md` for the current package surface, the relevant document under `docs/design/` for architecture decisions, and `docs/RELEASE_CHECKLIST.md` only for release work.
 
-## 项目是什么
+## Boundaries
 
-A 股投研三系统（`a-stock-tracker`/`a-stock-research`/`a-stock-monitor`）共享的市场数据 Provider 原语包，从 `a-stock-tracker/lib/` 剥离。
+- Keep changes inside this repository unless the user separately authorizes a consumer-repository change.
+- Never hardcode or commit credentials. Keep real network access out of tests; inject clients and keep optional third-party SDK imports lazy.
+- Provider boundaries translate external failures into structured `MarketDataResult` outcomes with an explicit status and error code; do not leak SDK exception types to consumers.
+- Preserve source, timestamp/freshness, degradation, and fallback metadata. Point-in-time gaps such as suspensions or holidays must use the established nearest-valid-date semantics rather than silently presenting stale data as current.
+- Persistent cache writes must be atomic. Reuse the existing temporary-file, flush/fsync, and replace pattern.
+- Do not add a dependency without explicit approval and corresponding project metadata.
 
-当前状态（2026-08-10）：本仓库版本 `0.5.0`。已删除没有生产消费者的 BaoStock/Composite fallback、双源实时行情组合器、占位合同和旧 prompt carrier；保留 TuShare 行情/行业/估值/财务/分红 Provider、估值分位、结构化合同和实时行情新鲜度校验。`a-stock-tracker` 与统一的 `a-stock-agent-skills` runtime 均消费本包；Agent prompt、rubric 和安装生命周期只归 `/home/lin/a-stock-agent-skills` 所有。
+## Verification
 
-权威文档：
-- 架构决策 → `docs/design/2026-06-22-three-system-restructure-design.md`
-- 任务拆解/验收标准 → `docs/plans/2026-06-23-a-stock-lib-shared-package-plan.md`
-- 发版全流程固定清单 → `docs/RELEASE_CHECKLIST.md`
-
-## 运行与测试
-
-```bash
-cd ~/a-stock-lib && source .venv/bin/activate
-pytest tests/ -v
-```
-
-修改代码后必须保证全量测试通过，再交回给 PM。
-
-## 全局约束
-
-- **不要直接修改 `~/a-stock-tracker/` 内代码** —— 虽然 tracker 已经完成切换并依赖本包，但因为 tracker 工作区当前有既有未提交改动，在没有 PM 明确授权的情况下，禁止直接修改 tracker。
-- **不要硬编码 `TUSHARE_TOKEN`** —— Provider 的 token 优先级为构造参数显式传入 > 环境变量 `TUSHARE_TOKEN` > `read_tushare_token()` 从 `~/a-stock-tracker/.env` 读取（路径可通过 `env_path` 覆盖）。`tushare_quotes.py` 已在 Phase 3 统一到这个模式。
-- **不要在测试里发起真实网络请求** —— `tushare` 的 import 必须留在方法内部（懒加载），测试通过给 Provider 构造函数传入 mock `client` 参数来隔离
-- **所有新函数要有类型注解，不要裸 `raise Exception`** —— 失败路径统一返回 `MarketDataResult(status="failed", error_code=...)`
-- **新增依赖前先确认必要性**，不要静默引入 `pyproject.toml` 之外的包
-
-## 项目专属编码规范（2026-06-23 agy基于现有代码模式提炼）
-
-1. **第三方SDK调用必须有完整异常屏障**：触发真实网络交互的SDK调用必须完整包在`try...except Exception`内，统一转译成`MarketDataResult(status="failed", error_code=...)`，不让原生异常越过Provider边界
-2. **本地缓存文件必须原子写入**：用"写临时文件→`fsync`→`Path.replace()`"模式（参考`tushare_fundamentals.py`的`_write_cache`），不用裸`open("w")`覆盖写——本包会被多进程同时导入，覆盖写期间另一进程可能读到截断的残缺文件
-3. **第三方SDK的import必须懒加载在方法内部**，且构造函数保留`client: Any | None = None`注入入口
-4. **单日时点查询要做向前回溯的降级语义**：停牌/节假日缺数据时不直接`failed`，向前找最近有效交易日，`status="degraded"`+真实`freshness_days`，让调用方自行决定能否接受
-
-## 角色分工与流水线
-
-本仓库由三方协作开发，不是单一 agent 独立完成：
-
-- **PM（人类用户的委托方，负责任务下发与最终把关）**：拆解任务、下发带精确文件路径和接口契约的任务说明；调度审查；对发现的问题做判断——区分"新代码的真实缺陷"（要求直接修）与"迁移自旧系统的预存缺陷"（记入硬化清单，不在搬运任务里顺手改）；独立验证后才 commit；最终的文档更新和复盘由 PM 执行
-- **codex（主力开发者）**：写实现代码和测试。如果 sandbox 限制了网络访问或 `.git` 写入，这是预期边界，不需要绕过——把环境相关的步骤（装依赖、commit）明确报告给 PM，由 PM 接手
-- **agy（代码审查/质量负责人）**：做对抗性审查，只指出真实存在的问题，给出文件行号和具体修复建议；审查重点是边界条件、异常处理完整性、是否静默吞错误、类型设计合理性
-
-**流水线**：写代码 → 独立验证 → （新代码）审查 → 有问题直接修+补回归测试 → 复查决定是否需要再来一轮（最多 2 轮）→ 仍卡住升级给用户。
-
-## Commit 规范
-
-`类型: 中文描述`（`feat`/`fix`/`refactor`/`docs`/`chore`），与 `a-stock-tracker` 保持一致。commit 本身由 PM 执行。
+Use the commands declared by `README.md` and `pyproject.toml`. Run the affected tests during development, then the proportionate repository checks and `git diff --check` before handoff. Release and downstream-consumer validation belong to `docs/RELEASE_CHECKLIST.md`, not every code change.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+import a_stock_lib.framework_scoring as framework_scoring
 
 from a_stock_lib.contracts import (
     CycleStage,
@@ -182,3 +183,14 @@ def test_red_line_blocks_but_preserves_mechanical_score() -> None:
     assert "debt_ratio_above_75" in result.red_flags
     assert "dividend_decline_below_2" in result.red_flags
     assert result.subtotal > 0
+
+
+def test_rule_hash_changes_with_executable_rule(monkeypatch) -> None:
+    before = framework_scoring.framework_rule_hash("A")
+
+    def _score_a_changed(metrics, assessments, cycle):
+        return [], ["changed"], []
+
+    monkeypatch.setattr(framework_scoring, "_score_a", _score_a_changed)
+
+    assert framework_scoring.framework_rule_hash("A") != before
