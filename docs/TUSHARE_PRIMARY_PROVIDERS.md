@@ -1,11 +1,11 @@
 # TuShare 生产主源 Provider API
 
-适用版本：`a-stock-lib==0.5.0`
+适用版本：`a-stock-lib==0.5.1`
 
 ## 安装
 
 ```bash
-pip install 'a-stock-lib[tushare]==0.5.0'
+pip install 'a-stock-lib[tushare]==0.5.1'
 ```
 
 本版本固定 `tushare==1.4.29`。Token 优先级：构造参数 → `TUSHARE_TOKEN` → 显式 `env_path` 指向的文件。禁止在代码中硬编码 Token。
@@ -84,6 +84,8 @@ report_type, comp_type, end_type, update_flag
 ```
 
 `fina_indicator` 官方不提供 `f_ann_date/report_type/comp_type/end_type`，这些字段保持 `NULL`，不得伪造。三大报表保留官方 PIT 键和更正标识。
+
+`fina_indicator` 的选择字段包含 `or_yoy`（营业收入同比增长率）与 `dt_netprofit_yoy`（扣除非经常损益后的归母净利润同比增长率），供消费者做最新报告方向核验；它们不是自动评分或单季年化字段。
 
 财务结果的 `source_as_of` 使用有效公告日：三大报表优先 `f_ann_date`、回退 `ann_date`；`fina_indicator` 使用 `ann_date`。
 

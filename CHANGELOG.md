@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.5.1] — 2026-08-23
+
+- `fina_indicator` 请求增加官方 `or_yoy` 与 `dt_netprofit_yoy` 字段，供下游构建最新报告方向快照；现有调用签名和字段保持兼容。
+
 ## [0.5.0] — 2026-08-10
 
 - 删除已由 TuShare-only 生产路径取代的 BaoStock Provider、`CompositeMarketDataProvider`、旧 bars normalizer/异常 helper 与 `baostock` optional dependency。

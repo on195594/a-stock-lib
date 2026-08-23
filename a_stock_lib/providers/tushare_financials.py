@@ -67,7 +67,7 @@ DIVIDEND_NUMERIC_COLUMNS = (
 )
 FINA_INDICATOR_FIELDS = (
     "ts_code,ann_date,end_date,update_flag,roe_waa,netprofit_yoy,"
-    "debt_to_assets,grossprofit_margin,bps"
+    "debt_to_assets,grossprofit_margin,bps,or_yoy,dt_netprofit_yoy"
 )
 
 
