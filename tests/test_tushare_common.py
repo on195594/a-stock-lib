@@ -13,6 +13,7 @@ from a_stock_lib.market_data import (
 )
 from a_stock_lib.providers.tushare_common import (
     TushareRateLimiter,
+    _freshness_days,
     call_with_network_retry,
     classify_tushare_exception,
 )
@@ -50,6 +51,20 @@ def test_market_data_result_carries_ingestion_metadata() -> None:
     assert result.source_as_of == "2026-07-18"
     assert result.request_fingerprint == "abc123"
     assert result.row_count == 1
+
+
+@pytest.mark.parametrize(
+    ("fetched_at", "source_as_of", "expected"),
+    [
+        ("2026-08-23T12:00:00", "2026-08-23", 0),
+        ("2026-08-23T12:00:00", "2026-08-20", 3),
+        ("2026-08-23T12:00:00", None, None),
+    ],
+)
+def test_freshness_days_uses_observation_date(
+    fetched_at: str, source_as_of: str | None, expected: int | None
+) -> None:
+    assert _freshness_days(fetched_at, source_as_of) == expected
 
 
 def test_rate_limiter_spaces_calls_below_configured_ceiling() -> None:

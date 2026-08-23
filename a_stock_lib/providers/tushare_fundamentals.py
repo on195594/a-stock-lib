@@ -71,7 +71,6 @@ class TushareFundamentalsProvider(TushareProviderBase):
                 fallback_reason="CACHE_WRITE_FAILED",
                 error_message=str(exc),
                 freshness_days=0,
-                source_as_of=result.fetched_at[:10],
                 request_fingerprint=result.request_fingerprint,
                 row_count=len(industry_map),
             )
@@ -81,7 +80,6 @@ class TushareFundamentalsProvider(TushareProviderBase):
             result.source,
             result.fetched_at,
             freshness_days=0,
-            source_as_of=result.fetched_at[:10],
             request_fingerprint=result.request_fingerprint,
             row_count=len(industry_map),
         )
@@ -100,7 +98,6 @@ class TushareFundamentalsProvider(TushareProviderBase):
                 TUSHARE_FUNDAMENTALS_SOURCE,
                 payload["fetched_at"],
                 freshness_days=int(age_seconds / 86400),
-                source_as_of=payload["fetched_at"][:10],
                 request_fingerprint=request_fingerprint("stock_basic", _INDUSTRY_PARAMS),
                 row_count=len(payload["industry_map"]),
             )

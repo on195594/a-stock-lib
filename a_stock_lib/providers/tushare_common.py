@@ -311,10 +311,23 @@ def replace_frame_result(
         fallback_reason=result.fallback_reason,
         error_code=result.error_code,
         error_message=result.error_message,
-        freshness_days=result.freshness_days,
+        freshness_days=(
+            result.freshness_days
+            if result.freshness_days is not None
+            else _freshness_days(result.fetched_at, source_as_of)
+        ),
         adjusted=result.adjusted,
         volume_unit=result.volume_unit,
         source_as_of=source_as_of,
         request_fingerprint=result.request_fingerprint,
         row_count=len(frame),
     )
+
+
+def _freshness_days(fetched_at: str, source_as_of: str | None) -> int | None:
+    if source_as_of is None:
+        return None
+    try:
+        return (datetime.fromisoformat(fetched_at).date() - date.fromisoformat(source_as_of[:10])).days
+    except ValueError:
+        return None

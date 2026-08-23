@@ -14,7 +14,7 @@ pip install 'a-stock-lib[tushare]==0.6.0'
 
 `TushareMarketDataProvider` 与其他 TuShare Provider 共用 `TushareProviderBase` 的 token、client、限流、typed retry、错误分类和请求指纹。成功行情以实际最大交易日作为 `source_as_of`；标量价格完整继承 bars 的 `source_as_of`、`freshness_days`、`request_fingerprint` 和 `row_count`。
 
-`TushareFundamentalsProvider.fetch_industry_map()` 的远端与缓存命中结果都返回来源抓取日、缓存年龄、确定性请求指纹和映射行数。行业接口没有官方业务日期，因此 `source_as_of` 明确表示本地观察/抓取日，不伪装成财报期或交易日。
+`TushareFundamentalsProvider.fetch_industry_map()` 的远端与缓存命中结果都返回缓存年龄、确定性请求指纹和映射行数。行业接口没有官方业务日期，因此 `source_as_of` 保持 `None`；抓取时点只由 `fetched_at` 表示，不伪装成财报期或交易日。
 
 ## 估值
 

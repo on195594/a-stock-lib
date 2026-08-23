@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-from dataclasses import replace
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable
@@ -151,15 +150,7 @@ class TushareMarketDataProvider(TushareProviderBase):
             normalized = normalized.sort_values("date").reset_index(drop=True)
         except Exception as exc:
             return _schema_failure(result, exc)
-        normalized_result = replace_frame_result(result, normalized, normalized["date"].max())
-        freshness = max(
-            0,
-            (
-                date.fromisoformat(result.fetched_at[:10])
-                - date.fromisoformat(str(normalized_result.source_as_of))
-            ).days,
-        )
-        return replace(normalized_result, freshness_days=freshness)
+        return replace_frame_result(result, normalized, None)
 
     def _fetch_daily(self, code: str, start_date: str, end_date: str, purpose: str) -> MarketDataResult[pd.DataFrame]:
         try:

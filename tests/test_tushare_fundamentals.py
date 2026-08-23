@@ -42,7 +42,7 @@ def test_fetch_industry_map_returns_ok_with_mapping(tmp_path):
     assert result.value == {"600036": "银行", "002594": "汽车整车"}
     assert result.request_fingerprint is not None
     assert result.freshness_days == 0
-    assert result.source_as_of == result.fetched_at[:10]
+    assert result.source_as_of is None
     assert result.row_count == 2
 
 
@@ -115,7 +115,7 @@ def test_fetch_industry_map_uses_cache_within_ttl(tmp_path):
     result = provider.fetch_industry_map()
     assert result.status == "ok"
     assert result.value == {"600036": "银行"}
-    assert result.source_as_of == "2026-06-23"
+    assert result.source_as_of is None
     assert result.request_fingerprint
     assert result.row_count == 1
 
