@@ -8,7 +8,7 @@ A 股投研三系统（`a-stock-tracker` 评分管道 / `a-stock-research` 新�
 
 ## 当前状态（2026-08-23）
 
-当前仓库版本 `0.6.0`：TuShare 行情统一复用 Provider base，行情/行业 metadata 完整化，并恢复 A—F 六框架的 report-only 基本面评分纯函数。生产消费者仍运行已验证的 `0.5.3`；`0.6.0` 尚未部署。
+当前版本 `0.6.0`：TuShare 行情统一复用 Provider base，行情/行业 metadata 完整化，并恢复 A—F 六框架的 report-only 基本面评分纯函数。`a-stock-tracker` 与 `a-stock-agent-skills` runtime 均已完成 `0.6.0` 切换和回读；Research 通过只读命令消费确定性基本面评分，tracker 继续保留既有 Framework A scorer。
 
 下游为 `a-stock-tracker` 与 `/home/lin/a-stock-agent-skills`；后者是 research/monitor/QA 与 runtime 的唯一 canonical carrier。
 

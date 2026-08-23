@@ -4,7 +4,7 @@
 
 - 新增 A/B/C/D/E/F 六框架的 report-only 确定性基本面评分纯函数；保持各框架 60 分结构、周期折扣、分支和红线，不接入生产评分或交易动作。
 - `TushareMarketDataProvider` 统一复用 `TushareProviderBase`，行情与行业结果补齐来源日期、请求指纹、行数及可计算的新鲜度 metadata。
-- 当前版本仅完成仓库内实现与验证，尚未切换 tracker 或 agent runtime。
+- tracker 与 agent runtime 已在消费者 shadow 通过后切换至 0.6.0；tracker 既有 Framework A 实验口径保持不变。
 
 ## [0.5.3] — 2026-08-23
 

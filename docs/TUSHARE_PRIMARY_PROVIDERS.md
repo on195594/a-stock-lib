@@ -1,6 +1,6 @@
 # TuShare 生产主源 Provider API
 
-适用版本：`a-stock-lib==0.6.0`（仓库候选；生产消费者仍为 `0.5.3`）
+适用版本：`a-stock-lib==0.6.0`
 
 ## 安装
 
