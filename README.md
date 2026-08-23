@@ -8,7 +8,7 @@ A 股投研三系统（`a-stock-tracker` 评分管道 / `a-stock-research` 新�
 
 ## 当前状态（2026-08-10）
 
-当前版本 `0.5.1`。在 `0.5.0` 的 TuShare 行情、行业、估值、财务和分红 Provider 基线上，为 `fina_indicator` 增加收入及扣非归母净利润同比字段。`a-stock-agent-skills` runtime 已于 2026-08-23 切换到 `0.5.1`；`a-stock-tracker` 仍运行 `0.5.0`，其升级属于独立消费者 rollout。
+当前版本 `0.5.1`。在 `0.5.0` 的 TuShare 行情、行业、估值、财务和分红 Provider 基线上，为 `fina_indicator` 增加收入及扣非归母净利润同比字段。`a-stock-agent-skills` runtime 与 `a-stock-tracker` 已于 2026-08-23 分别完成 `0.5.1` 消费者切换和验证。
 
 下游为 `a-stock-tracker` 与 `/home/lin/a-stock-agent-skills`；后者是 research/monitor/QA 与 runtime 的唯一 canonical carrier。
 
