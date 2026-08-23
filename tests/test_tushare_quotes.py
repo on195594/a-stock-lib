@@ -4,12 +4,12 @@ import pandas as pd
 import pytest
 
 from a_stock_lib.market_data import (
+    INVALID_ARGUMENT,
     MISSING_COLUMNS,
     RATE_LIMITED,
     SCHEMA_CHANGED,
     SOURCE_STALE,
     TIMEOUT,
-    UNKNOWN_ERROR,
 )
 from a_stock_lib.providers.tushare_quotes import (
     DAILY_SOURCE,
@@ -173,6 +173,65 @@ def test_tushare_normalizer_rejects_inconsistent_ohlc():
     assert result.error_code == SCHEMA_CHANGED
 
 
+def test_fetch_score_price_rejects_malformed_source_date():
+    provider = TushareMarketDataProvider(
+        token="fake-token",
+        client=_DailyClient(
+            pd.DataFrame(
+                {
+                    "trade_date": ["2026-06-1a"],
+                    "open": [10.0],
+                    "high": [11.0],
+                    "low": [9.0],
+                    "close": [10.5],
+                    "vol": [100.0],
+                }
+            )
+        ),
+    )
+
+    result = provider.fetch_score_price("600036", "2026-06-23")
+
+    assert result.status == "failed"
+    assert result.error_code == SCHEMA_CHANGED
+
+
+def test_fetch_l3_bars_rejects_malformed_source_date():
+    provider = TushareMarketDataProvider(
+        token="fake-token",
+        client=_DailyClient(
+            pd.DataFrame(
+                {
+                    "trade_date": ["2026-06-0x"],
+                    "open": [10.0],
+                    "high": [11.0],
+                    "low": [9.0],
+                    "close": [10.5],
+                    "vol": [100.0],
+                }
+            )
+        ),
+    )
+
+    result = provider.fetch_l3_bars("600036", "2026-06-23", 1)
+
+    assert result.status == "failed"
+    assert result.error_code == SCHEMA_CHANGED
+
+
+@pytest.mark.parametrize(
+    ("start_date", "end_date"),
+    [("not-a-date", "2026-06-23"), ("2026-06-24", "2026-06-23")],
+)
+def test_fetch_daily_bars_range_rejects_invalid_range(start_date: str, end_date: str):
+    provider = TushareMarketDataProvider(token="fake-token")
+
+    result = provider.fetch_daily_bars_range("600036", start_date, end_date)
+
+    assert result.status == "failed"
+    assert result.error_code == INVALID_ARGUMENT
+
+
 def test_tushare_exception_result_classifies_time_limit_as_timeout():
     result = _exception_result(DAILY_SOURCE, Exception("time limit exceeded"))
     assert result.error_code == TIMEOUT
@@ -212,7 +271,7 @@ def test_fetch_score_price_rejects_malformed_date():
     provider = TushareMarketDataProvider(token="fake-token")
     result = provider.fetch_score_price("600036", "not-a-date")
     assert result.status == "failed"
-    assert result.error_code == UNKNOWN_ERROR
+    assert result.error_code == INVALID_ARGUMENT
     assert result.value is None
     assert result.error_message is not None
 
@@ -221,7 +280,7 @@ def test_fetch_l3_bars_rejects_malformed_date():
     provider = TushareMarketDataProvider(token="fake-token")
     result = provider.fetch_l3_bars("600036", "not-a-date", 60)
     assert result.status == "failed"
-    assert result.error_code == UNKNOWN_ERROR
+    assert result.error_code == INVALID_ARGUMENT
     assert result.value is None
     assert result.error_message is not None
 
@@ -230,6 +289,6 @@ def test_fetch_outcome_price_rejects_malformed_date():
     provider = TushareMarketDataProvider(token="fake-token")
     result = provider.fetch_outcome_price("600036", "not-a-date")
     assert result.status == "failed"
-    assert result.error_code == UNKNOWN_ERROR
+    assert result.error_code == INVALID_ARGUMENT
     assert result.value is None
     assert result.error_message is not None

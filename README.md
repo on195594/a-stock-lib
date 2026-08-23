@@ -8,7 +8,7 @@ A 股投研三系统（`a-stock-tracker` 评分管道 / `a-stock-research` 新�
 
 ## 当前状态（2026-08-23）
 
-当前版本 `0.5.2`。在 `0.5.1` 基线上收紧行情非法值、OHLC 一致性与日期范围边界，行业缓存写失败改为结构化降级，并修复包版本身份不一致。`a-stock-tracker` 与 `a-stock-agent-skills` runtime 均已完成 `0.5.2` 切换和回读。
+当前版本 `0.5.3`。在 `0.5.2` 基线上补齐请求与上游观测日期的严格解析，非法日期和逆序区间 fail-closed；两个消费者在显式升级前仍保持已验证的 `0.5.2`。
 
 下游为 `a-stock-tracker` 与 `/home/lin/a-stock-agent-skills`；后者是 research/monitor/QA 与 runtime 的唯一 canonical carrier。
 

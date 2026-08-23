@@ -11,6 +11,7 @@ import pandas as pd
 from a_stock_lib.market_data import (
     AUTH_MISSING,
     EMPTY_RESPONSE,
+    INVALID_ARGUMENT,
     INSUFFICIENT_WINDOW,
     MISSING_COLUMNS,
     SCHEMA_CHANGED,
@@ -55,9 +56,9 @@ class TushareMarketDataProvider:
         try:
             _score_dt = _parse_date(score_date)
         except ValueError as exc:
-            return MarketDataResult(None, "failed", DAILY_SOURCE, _now(), error_code=UNKNOWN_ERROR, error_message=str(exc))
+            return _invalid_argument(DAILY_SOURCE, exc)
         start_date = _compact(_score_dt - timedelta(days=10))
-        result = self._fetch_daily(code, start_date, _compact(score_date), "score_price")
+        result = self._fetch_daily(code, start_date, _compact(_score_dt), "score_price")
         if result.value is None or result.value.empty:
             return _scalar_failure(result, DAILY_SOURCE)
         return _scalar_price_result(result, _score_dt)
@@ -66,10 +67,10 @@ class TushareMarketDataProvider:
         try:
             _end_dt = _parse_date(end_date)
         except ValueError as exc:
-            return MarketDataResult(None, "failed", DAILY_SOURCE, _now(), error_code=UNKNOWN_ERROR, error_message=str(exc))
+            return _invalid_argument(DAILY_SOURCE, exc)
         lookback_days = max(365, window * 3)
         start_date = _compact(_end_dt - timedelta(days=lookback_days))
-        result = self._fetch_daily(code, start_date, _compact(end_date), "l3_bars")
+        result = self._fetch_daily(code, start_date, _compact(_end_dt), "l3_bars")
         if result.value is None:
             return result
         if len(result.value) < window:
@@ -84,15 +85,22 @@ class TushareMarketDataProvider:
         return result
 
     def fetch_daily_bars_range(self, code: str, start_date: str, end_date: str) -> MarketDataResult[pd.DataFrame]:
-        return self._fetch_daily(code, _compact(start_date), _compact(end_date), "l3_bars")
+        try:
+            start = _parse_date(start_date)
+            end = _parse_date(end_date)
+            if start > end:
+                raise ValueError("start_date must not be after end_date")
+        except ValueError as exc:
+            return _invalid_argument(DAILY_SOURCE, exc)
+        return self._fetch_daily(code, _compact(start), _compact(end), "l3_bars")
 
     def fetch_outcome_price(self, code: str, target_date: str) -> MarketDataResult[float]:
         try:
             _target_dt = _parse_date(target_date)
         except ValueError as exc:
-            return MarketDataResult(None, "failed", DAILY_SOURCE, _now(), error_code=UNKNOWN_ERROR, error_message=str(exc))
+            return _invalid_argument(DAILY_SOURCE, exc)
         start_date = _compact(_target_dt - timedelta(days=10))
-        result = self._fetch_daily(code, start_date, _compact(target_date), "outcome_price")
+        result = self._fetch_daily(code, start_date, _compact(_target_dt), "outcome_price")
         if result.value is None or result.value.empty:
             return _scalar_failure(result, DAILY_SOURCE)
         return _scalar_price_result(result, _target_dt)
@@ -112,6 +120,13 @@ class TushareMarketDataProvider:
         return _normalize_tushare_bars(df, INDEX_DAILY_SOURCE, "index_bars")
 
     def fetch_trade_calendar(self, start_date: str, end_date: str) -> MarketDataResult[pd.DataFrame]:
+        try:
+            start = _parse_date(start_date)
+            end = _parse_date(end_date)
+            if start > end:
+                raise ValueError("start_date must not be after end_date")
+        except ValueError as exc:
+            return _invalid_argument(TRADE_CAL_SOURCE, exc)
         client_result = self._client_or_failure(TRADE_CAL_SOURCE)
         if isinstance(client_result, MarketDataResult):
             return client_result
@@ -121,8 +136,8 @@ class TushareMarketDataProvider:
                 client.trade_cal,
                 exchange="SSE",
                 is_open="1",
-                start_date=_compact(start_date),
-                end_date=_compact(end_date),
+                start_date=_compact(start),
+                end_date=_compact(end),
                 fields="cal_date",
             )
         except Exception as exc:
@@ -301,6 +316,17 @@ def _scalar_failure(result: MarketDataResult[pd.DataFrame], source: str) -> Mark
     )
 
 
+def _invalid_argument(source: str, exc: ValueError) -> MarketDataResult[Any]:
+    return MarketDataResult(
+        None,
+        "failed",
+        source,
+        _now(),
+        error_code=INVALID_ARGUMENT,
+        error_message=str(exc),
+    )
+
+
 def _scalar_price_result(
     result: MarketDataResult[pd.DataFrame], requested_date: date
 ) -> MarketDataResult[float]:
@@ -340,20 +366,20 @@ def _exception_result(
 
 
 def _compact(value: str | date) -> str:
-    if isinstance(value, date):
-        return value.strftime("%Y%m%d")
-    return value.replace("-", "")[:8]
+    return _parse_date(value).strftime("%Y%m%d")
 
 
 def _format_tushare_date(value: Any) -> str:
-    raw = str(value)
-    if "-" in raw:
-        return raw[:10]
-    return datetime.strptime(raw[:8], "%Y%m%d").date().isoformat()
+    return _parse_date(str(value)).isoformat()
 
 
-def _parse_date(value: str) -> date:
-    return date.fromisoformat(value[:10])
+def _parse_date(value: str | date) -> date:
+    if isinstance(value, date):
+        return value
+    raw = str(value).strip()
+    if "-" in raw[:10]:
+        return date.fromisoformat(raw[:10])
+    return datetime.strptime(raw[:8], "%Y%m%d").date()
 
 
 def _now() -> str:
