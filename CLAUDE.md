@@ -4,7 +4,7 @@
 
 A 股投研三系统（`a-stock-tracker`/`a-stock-research`/`a-stock-monitor`）共享的市场数据 Provider 原语包。从 `a-stock-tracker/lib/` 剥离，目标是消灭三套重复的行情/基本面抓取实现。
 
-**当前状态（2026-08-23）**：本仓库版本 `0.5.3`。保留 TuShare 行情/行业/估值/财务/分红 Provider、估值分位、结构化合同和实时行情新鲜度校验；行情值、OHLC 与日期边界 fail-closed，行业缓存写失败返回结构化降级。**a-stock-tracker** 与统一的 **`a-stock-agent-skills` runtime** 是两个直接消费者；Agent prompt、rubric 和安装生命周期只归 `/home/lin/a-stock-agent-skills` 所有。
+**当前状态（2026-08-23）**：本仓库版本 `0.6.1`。在 0.6.0 的 Provider/metadata 与 A—F report-only 评分基础上，让 `rule_hash` 自动覆盖可执行评分源码。保留 TuShare 行情/行业/估值/财务/分红 Provider、估值分位、六框架结构化合同与确定性基本面评分（report-only）；行情值、OHLC 与日期边界 fail-closed，行业缓存写失败返回结构化降级。**a-stock-tracker** 与统一的 **`a-stock-agent-skills` runtime** 均已完成 `0.6.1` 切换和回读；Agent prompt、rubric 和安装生命周期只归 `/home/lin/a-stock-agent-skills` 所有。
 
 **文档指针**：
 - 架构决策 / 为什么这么设计 → `docs/design/2026-06-22-three-system-restructure-design.md`
@@ -31,6 +31,8 @@ python3 -m build           # 产出版本化 wheel（消费方安装这个，不
 | 文件 | 职责 |
 |------|------|
 | `a_stock_lib/market_data.py` | Provider 协议原语：`MarketDataResult`、错误码常量和 `MarketDataProvider` 协议。纯类型/数据结构，不依赖具体 SDK |
+| `a_stock_lib/contracts.py` | 六框架路由、周期与主观证据 typed contract |
+| `a_stock_lib/framework_scoring.py` | A-F 基本面 60 分 report-only 纯函数及动态规则哈希 |
 | `a_stock_lib/providers/tushare_quotes.py` | 行情主源（需 `TUSHARE_TOKEN`），已完成 Phase 3 token 来源、schema、异常分类硬化 |
 | `a_stock_lib/providers/tushare_fundamentals.py` | 全市场行业分类批量拉取 + 本地 JSON 缓存（30天TTL），全新代码，替代不稳定的 AKShare `stock_individual_info_em` |
 | `a_stock_lib/providers/tushare_common.py` | TuShare Token、进程级限流、typed 网络重试、错误分类、请求指纹与结果 metadata |

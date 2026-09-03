@@ -1,6 +1,9 @@
-# HANDOFF.md — PM 交接信（写给接管全部职责的 codex）
+# HANDOFF.md — PM 交接信（历史归档快照 / 不再维护）
 
-写于 2026-07-01。假设场景：我（Claude，原 PM/架构师）因某种原因无法继续跟进
+> **归档声明（2026-09-03）**：本文档为历史交接信快照，**现已封存且不再维护**。
+> 本仓库的当前全局状态与公开包原语以 [`README.md`](README.md) 为准，版本变更历史以 [`CHANGELOG.md`](CHANGELOG.md) 为准。后续任何日常维护与发版均不再同步本文档。
+
+写于 2026-07-01（截至 2026-08-23 阶段性封存）。假设场景：我（Claude，原 PM/架构师）因某种原因无法继续跟进
 `a-stock-lib` 项目，你（codex）从"主力开发者"升级为独立负责人——不再只是接到
 精确任务、写代码、报告结果；任务拆解、审查裁决、方向决策，以前由我做的这些事，
 现在也要你自己做。这封信是我要交代给你的东西，不是重复 `AGENTS.md`（那份讲的
@@ -80,14 +83,15 @@
   授权前禁止碰。
 - 不提交 `.env`/密钥/凭证/临时文件。
 
-## 项目现状（2026-08-10）
+## 历史项目现状快照（截至 2026-08-23，v0.6.1 封存）
 
-本仓库版本 `0.5.0`。TuShare 估值、财务、分红、行业和行情 Provider、十年估值分位、
-结构化合同与实时行情新鲜度校验保留；没有生产消费者的 BaoStock/Composite fallback、
-双源实时组合器、占位合同和旧 prompt carrier 已删除。
+本仓库版本 `0.6.1`。TuShare 估值、财务、分红、行业和行情 Provider、十年估值分位、
+结构化合同与实时行情新鲜度校验保留；已完成 0.6.0~0.6.1 的 Provider 基类统一、元数据
+补齐、六框架（A—F）report-only 确定性基本面 60 分纯函数以及源码动态 `rule_hash`。
 
 跨项目当前状态：a-stock-tracker 与 `/home/lin/a-stock-agent-skills` runtime 均直接消费
-本包。research/monitor/QA 已由后者统一承载，不再是散落在客户端目录中的独立安装。
+本包 0.6.1。research/monitor/QA 已由后者统一承载，不再是散落在客户端目录中的独立安装。
+Research 通过只读命令消费确定性基本面评分，tracker 继续保留既有 Framework A scorer。
 Phase 6 仍保持
 report-only；2026-07-02 已把 weekly PM loop 自动化为每周一 09:30 cron，检查
 weekly/daily/outcome 日志、`READY_CRON` 和 `accuracy-report`，并通过 Telegram bot
