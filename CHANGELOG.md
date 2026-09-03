@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.6.2] — 2026-09-03
+
+- `a_stock_lib.providers` 顶层统一导出 `TushareMarketDataProvider`、`TushareFundamentalsProvider`、`TushareProviderBase`、`TushareRateLimiter` 与 `MarketSession`。
+- `framework_rule_hash` 引入 LRU 缓存并增加去源码环境降级回退机制，兼顾高频打分性能与动态 monkeypatch 敏感性。
+- 行业字典构建改用 `clean_df.itertuples(index=False)`，提升全市场处理吞吐量并增加空键防御。
+- 补全六框架内部评分函数（`_score_a` ~ `_score_f`）参数与返回值类型注解。
+- 行业本地缓存与 `.env` Token 文件读取显式指定 `encoding="utf-8"`，杜绝跨平台字符集异常。
+- 估值分位月跨度计算解耦对 `Period.ordinal` 内部属性的依赖，改用确定性自然月算术差。
+- 行情 Provider 复用全局 `now()` 与 `compact_date()`，清理重复逻辑。
+
 ## [0.6.1] — 2026-08-23
 
 - `rule_hash` 改为直接覆盖评分 dataclass、共享评分 helper、框架 scorer 与主观类别合同的源码哈希；规则实现变化会自动改变 hash，不再依赖手工同步签名字符串。

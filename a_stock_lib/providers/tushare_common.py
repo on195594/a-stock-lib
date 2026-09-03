@@ -38,7 +38,7 @@ def read_tushare_token(env_path: Path = DEFAULT_ENV_PATH) -> str | None:
     """Read TUSHARE_TOKEN from an explicit dotenv-style file."""
     if not env_path.is_file():
         return None
-    for line in env_path.read_text().splitlines():
+    for line in env_path.read_text(encoding="utf-8").splitlines():
         stripped = line.split("#", 1)[0].strip()
         if "=" not in stripped:
             continue

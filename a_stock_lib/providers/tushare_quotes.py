@@ -15,12 +15,14 @@ from a_stock_lib.market_data import (
     SCHEMA_CHANGED,
     SOURCE_STALE,
     MarketDataResult,
+    now,
 )
 from a_stock_lib.providers.tushare_common import (
     DEFAULT_ENV_PATH,
     TushareRateLimiter,
     TushareProviderBase,
     classify_tushare_exception,
+    compact_date,
     replace_frame_result,
 )
 
@@ -396,7 +398,7 @@ def _exception_result(
 
 
 def _compact(value: str | date) -> str:
-    return _parse_date(value).strftime("%Y%m%d")
+    return compact_date(value) if isinstance(value, str) else value.strftime("%Y%m%d")
 
 
 def _format_tushare_date(value: Any) -> str:
@@ -412,5 +414,4 @@ def _parse_date(value: str | date) -> date:
     return datetime.strptime(raw[:8], "%Y%m%d").date()
 
 
-def _now() -> str:
-    return datetime.now().isoformat()
+_now = now

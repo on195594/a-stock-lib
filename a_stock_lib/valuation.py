@@ -70,7 +70,7 @@ def compute_valuation_percentile(
         return ValuationPercentile(value, None, window_start, window_end, valid_months, INSUFFICIENT_HISTORY)
     current = float(monthly[field].iloc[-1])
     percentile = round(float((monthly[field] < current).sum() / valid_months * 100), 1)
-    first_month = monthly["trade_date"].iloc[0].to_period("M").ordinal
-    as_of_month = pd.Period(as_of, freq="M").ordinal
-    coverage = FULL_10Y if as_of_month - first_month >= 120 else SINCE_LISTING
+    first_date = monthly["trade_date"].iloc[0].date()
+    month_diff = (as_of.year - first_date.year) * 12 + (as_of.month - first_date.month)
+    coverage = FULL_10Y if month_diff >= 120 else SINCE_LISTING
     return ValuationPercentile(current, percentile, window_start, window_end, valid_months, coverage)

@@ -194,3 +194,15 @@ def test_rule_hash_changes_with_executable_rule(monkeypatch) -> None:
     monkeypatch.setattr(framework_scoring, "_score_a", _score_a_changed)
 
     assert framework_scoring.framework_rule_hash("A") != before
+
+
+def test_rule_hash_fallback_when_getsource_fails(monkeypatch) -> None:
+    def _fail_getsource(_):
+        raise OSError("could not get source code")
+
+    monkeypatch.setattr(framework_scoring.inspect, "getsource", _fail_getsource)
+    framework_scoring._cached_rule_hash.cache_clear()
+    fallback_hash = framework_scoring.framework_rule_hash("A")
+    assert len(fallback_hash) == 64
+    # Second call uses cache
+    assert framework_scoring.framework_rule_hash("A") == fallback_hash

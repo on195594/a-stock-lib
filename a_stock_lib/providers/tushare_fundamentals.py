@@ -55,11 +55,12 @@ class TushareFundamentalsProvider(TushareProviderBase):
             return result
         df = result.value
         clean_df = df.dropna(subset=["industry"])
-        industry_map = {
-            str(row["ts_code"]).split(".")[0]: industry
-            for _, row in clean_df.iterrows()
-            if (industry := str(row["industry"]).strip())
-        }
+        industry_map: dict[str, str] = {}
+        for row in clean_df.itertuples(index=False):
+            ts_code = getattr(row, "ts_code", "")
+            industry = str(getattr(row, "industry", "")).strip()
+            if industry and ts_code:
+                industry_map[str(ts_code).split(".")[0]] = industry
         try:
             self._write_cache(industry_map)
         except OSError as exc:
@@ -88,7 +89,7 @@ class TushareFundamentalsProvider(TushareProviderBase):
         if not self.cache_path.exists():
             return None
         try:
-            payload = json.loads(self.cache_path.read_text())
+            payload = json.loads(self.cache_path.read_text(encoding="utf-8"))
             age_seconds = time.time() - payload["fetched_at_epoch"]
             if age_seconds > self.ttl_seconds:
                 return None

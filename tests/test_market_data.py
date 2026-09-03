@@ -19,3 +19,24 @@ def test_market_data_result_defaults() -> None:
     assert result.adjusted == "none"
     assert result.volume_unit == "unknown"
     assert result.error_code is None
+
+
+def test_providers_package_exports() -> None:
+    from a_stock_lib import providers
+
+    expected_exports = [
+        "TushareMarketDataProvider",
+        "TushareFundamentalsProvider",
+        "TushareValuationProvider",
+        "TushareFinancialProvider",
+        "TushareDividendProvider",
+        "TushareProviderBase",
+        "TushareRateLimiter",
+        "MarketSession",
+        "QuoteObservation",
+        "validate_quote_observation",
+        "market_session",
+    ]
+    for name in expected_exports:
+        assert hasattr(providers, name), f"providers package missing export: {name}"
+    assert set(expected_exports).issubset(set(providers.__all__))

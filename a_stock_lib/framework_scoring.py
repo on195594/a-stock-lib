@@ -1,6 +1,7 @@
 """Deterministic, report-only fundamental scoring for frameworks A-F."""
 from __future__ import annotations
 
+import functools
 import hashlib
 import inspect
 import math
@@ -43,6 +44,7 @@ class FrameworkScore:
 
 
 Metrics = Mapping[str, Any]
+ScorerResult = tuple[list[DimensionScore], list[str], list[str]]
 RULE_VERSION = "2026-08-23.v1"
 _SHARED_RULE_FUNCTIONS = (
     "score_fundamentals",
@@ -57,22 +59,34 @@ _SHARED_RULE_FUNCTIONS = (
 )
 
 
+def _source_or_code(obj: Any) -> str:
+    try:
+        return inspect.getsource(obj)
+    except (OSError, TypeError):
+        code = getattr(obj, "__code__", None)
+        return str(code.co_code) if code is not None else repr(obj)
+
+
+@functools.lru_cache(maxsize=16)
+def _cached_rule_hash(key_value: str, subjects: str, *funcs_and_classes: Any) -> str:
+    payload = "\n".join(
+        [
+            RULE_VERSION,
+            key_value,
+            subjects,
+            *(_source_or_code(obj) for obj in funcs_and_classes),
+        ]
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def framework_rule_hash(framework: FrameworkKey | str) -> str:
     key = framework if isinstance(framework, FrameworkKey) else FrameworkKey(framework.upper())
     scorer_name = f"_score_{key.value.lower()}"
     names = (*_SHARED_RULE_FUNCTIONS, scorer_name)
     subjects = ",".join(sorted(category.value for category in required_subjective_categories(key)))
-    payload = "\n".join(
-        [
-            RULE_VERSION,
-            key.value,
-            subjects,
-            inspect.getsource(DimensionScore),
-            inspect.getsource(FrameworkScore),
-            *(inspect.getsource(globals()[name]) for name in names),
-        ]
-    )
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    objs = (DimensionScore, FrameworkScore, *(globals()[name] for name in names))
+    return _cached_rule_hash(key.value, subjects, *objs)
 
 
 def score_fundamentals(
@@ -174,7 +188,11 @@ def _common_red_flags(metrics: Metrics) -> list[str]:
     return ["invalid_red_flags"] if value not in (None, ()) else []
 
 
-def _score_a(metrics: Metrics, assessments, _cycle):
+def _score_a(
+    metrics: Metrics,
+    assessments: Mapping[SubjectiveCategory, SubjectiveAssessment],
+    _cycle: CycleStage | None,
+) -> ScorerResult:
     debt = _number(metrics, "debt_ratio")
     debt_item = _lower("debt_ratio", debt, 40, 60, 10)
     interest_debt = _number(metrics, "interest_bearing_to_total_debt")
@@ -211,7 +229,11 @@ def _score_a(metrics: Metrics, assessments, _cycle):
     ], red, []
 
 
-def _score_b(metrics: Metrics, assessments, cycle):
+def _score_b(
+    metrics: Metrics,
+    assessments: Mapping[SubjectiveCategory, SubjectiveAssessment],
+    cycle: CycleStage | None,
+) -> ScorerResult:
     nim = _number(metrics, "nim")
     yoy = _number(metrics, "nim_yoy_decline_bp")
     two_year = _number(metrics, "nim_two_year_decline_bp")
@@ -249,7 +271,11 @@ def _score_b(metrics: Metrics, assessments, cycle):
     ], red, gates
 
 
-def _score_c(metrics: Metrics, assessments, cycle):
+def _score_c(
+    metrics: Metrics,
+    assessments: Mapping[SubjectiveCategory, SubjectiveAssessment],
+    cycle: CycleStage | None,
+) -> ScorerResult:
     dps = _number(metrics, "dps")
     eps = _number(metrics, "eps")
     same_basis = _boolean(metrics, "dps_eps_same_period_basis")
@@ -304,7 +330,11 @@ def _score_c(metrics: Metrics, assessments, cycle):
     return dimensions, red, [] if cycle is not None else ["cycle_stage"]
 
 
-def _score_d(metrics: Metrics, assessments, cycle):
+def _score_d(
+    metrics: Metrics,
+    assessments: Mapping[SubjectiveCategory, SubjectiveAssessment],
+    cycle: CycleStage | None,
+) -> ScorerResult:
     business_growth = _number(metrics, "business_volume_growth")
     if business_growth is None:
         business = _missing("business_volume_growth", 10)
@@ -341,7 +371,11 @@ def _score_d(metrics: Metrics, assessments, cycle):
     ], red, [] if cycle is not None else ["cycle_stage"]
 
 
-def _score_e(metrics: Metrics, assessments, _cycle):
+def _score_e(
+    metrics: Metrics,
+    assessments: Mapping[SubjectiveCategory, SubjectiveAssessment],
+    _cycle: CycleStage | None,
+) -> ScorerResult:
     red = _common_red_flags(metrics)
     for key in ("inventory_accumulating_two_years", "channel_stuffing", "price_increase_resisted"):
         if _boolean(metrics, key):
@@ -356,7 +390,11 @@ def _score_e(metrics: Metrics, assessments, _cycle):
     ], red, []
 
 
-def _score_f(metrics: Metrics, assessments, _cycle):
+def _score_f(
+    metrics: Metrics,
+    assessments: Mapping[SubjectiveCategory, SubjectiveAssessment],
+    _cycle: CycleStage | None,
+) -> ScorerResult:
     margin = _number(metrics, "gross_margin")
     margin_stable = _boolean(metrics, "gross_margin_stable")
     if margin is None or margin_stable is None:
