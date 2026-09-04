@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.6.3] — 2026-09-04
+
+- `compact_date` 增强：支持直接传入 `datetime.date` 对象与字符串首尾空白过滤，防止非法切片；`_compact` 统一委托。
+- `framework_scoring` 公开导出 `clear_rule_hash_cache` 并挂载 `framework_rule_hash.cache_clear`，为测试与动态 monkeypatch 提供标准缓存清理入口。
+- `pyproject.toml` 显式配置 `[tool.pytest.ini_options]` 优先加载工作区源码。
+
 ## [0.6.2] — 2026-09-03
 
 - `a_stock_lib.providers` 顶层统一导出 `TushareMarketDataProvider`、`TushareFundamentalsProvider`、`TushareProviderBase`、`TushareRateLimiter` 与 `MarketSession`。

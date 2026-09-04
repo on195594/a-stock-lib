@@ -4,7 +4,7 @@
 
 A 股投研三系统（`a-stock-tracker`/`a-stock-research`/`a-stock-monitor`）共享的市场数据 Provider 原语包。从 `a-stock-tracker/lib/` 剥离，目标是消灭三套重复的行情/基本面抓取实现。
 
-**当前状态（2026-09-03）**：本仓库版本 `0.6.2`。在 0.6.1 基础上补齐 providers 顶层导出、增加规则哈希 LRU 缓存与无源码降级、优化行业构建性能、补齐六框架 scorer 类型注解并解耦估值分位私有属性依赖。保留 TuShare 行情/行业/估值/财务/分红 Provider、估值分位、六框架结构化合同与确定性基本面评分（report-only）；行情值、OHLC 与日期边界 fail-closed，行业缓存写失败返回结构化降级。**a-stock-tracker** 与统一的 **`a-stock-agent-skills` runtime** 均已完成 `0.6.2` 切换和回读；Agent prompt、rubric 和安装生命周期只归 `/home/lin/a-stock-agent-skills` 所有。
+**当前状态（2026-09-04）**：本仓库版本 `0.6.3`。在 0.6.2 基础上增强 compact_date 空白容错并规范规则哈希缓存清理接口。保留 TuShare 行情/行业/估值/财务/分红 Provider、估值分位、六框架结构化合同与确定性基本面评分（report-only）；行情值、OHLC 与日期边界 fail-closed，行业缓存写失败返回结构化降级。**a-stock-tracker** 与统一的 **`a-stock-agent-skills` runtime** 均已完成 `0.6.3` 切换和回读；Agent prompt、rubric 和安装生命周期只归 `/home/lin/a-stock-agent-skills` 所有。
 
 **文档指针**：
 - 架构决策 / 为什么这么设计 → `docs/design/2026-06-22-three-system-restructure-design.md`
