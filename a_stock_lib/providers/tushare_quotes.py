@@ -398,7 +398,7 @@ def _exception_result(
 
 
 def _compact(value: str | date) -> str:
-    return compact_date(value) if isinstance(value, str) else value.strftime("%Y%m%d")
+    return compact_date(value)
 
 
 def _format_tushare_date(value: Any) -> str:

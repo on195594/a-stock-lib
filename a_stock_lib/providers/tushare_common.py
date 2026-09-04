@@ -155,8 +155,11 @@ def request_fingerprint(endpoint: str, params: Mapping[str, Any]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def compact_date(value: str) -> str:
-    return date.fromisoformat(value[:10]).strftime("%Y%m%d")
+def compact_date(value: str | date) -> str:
+    if isinstance(value, date):
+        return value.strftime("%Y%m%d")
+    raw = str(value).strip()
+    return date.fromisoformat(raw[:10]).strftime("%Y%m%d")
 
 
 def normalize_date_value(value: Any) -> Any:

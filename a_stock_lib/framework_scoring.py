@@ -89,6 +89,14 @@ def framework_rule_hash(framework: FrameworkKey | str) -> str:
     return _cached_rule_hash(key.value, subjects, *objs)
 
 
+def clear_rule_hash_cache() -> None:
+    """Clear the rule hash LRU cache (useful for testing and dynamic reloading)."""
+    _cached_rule_hash.cache_clear()
+
+
+framework_rule_hash.cache_clear = clear_rule_hash_cache  # type: ignore[attr-defined]
+
+
 def score_fundamentals(
     framework: FrameworkKey | str,
     metrics: Metrics,

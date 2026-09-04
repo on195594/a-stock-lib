@@ -4,6 +4,8 @@ import os
 
 import pytest
 
+from datetime import date
+
 from a_stock_lib.market_data import (
     PERMISSION_DENIED,
     RATE_LIMITED,
@@ -16,6 +18,7 @@ from a_stock_lib.providers.tushare_common import (
     _freshness_days,
     call_with_network_retry,
     classify_tushare_exception,
+    compact_date,
 )
 
 
@@ -140,3 +143,18 @@ def test_generic_api_error_with_timeout_text_is_not_retried() -> None:
         call_with_network_retry(fail, limiter=limiter)
 
     assert calls == 1
+
+
+@pytest.mark.parametrize(
+    ("raw_input", "expected"),
+    [
+        ("2026-09-03", "20260903"),
+        (" 2026-09-03 ", "20260903"),
+        ("20260903", "20260903"),
+        (" 20260903 ", "20260903"),
+        ("2026-09-03T15:30:00", "20260903"),
+        (date(2026, 9, 3), "20260903"),
+    ],
+)
+def test_compact_date_normalizes_various_inputs(raw_input: str | date, expected: str) -> None:
+    assert compact_date(raw_input) == expected
