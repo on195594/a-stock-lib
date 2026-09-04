@@ -14,3 +14,5 @@ This repository owns reusable market-data Provider primitives shared by `a-stock
 ## Verification
 
 Use the commands declared by `README.md` and `pyproject.toml`. Run the affected tests during development, then the proportionate repository checks and `git diff --check` before handoff. Release and downstream-consumer validation belong to `docs/RELEASE_CHECKLIST.md`, not every code change.
+Ensure `pyproject.toml` preserves `[tool.pytest.ini_options] pythonpath = ["."]` so test invocations consistently prioritize current workspace code over virtualenv-installed wheels.
+When authorized to update downstream projects, execute all verification gates defined in `docs/RELEASE_CHECKLIST.md` across `a-stock-tracker` and `a-stock-agent-skills`, including verifying version metadata from an independent cwd outside the source trees.
