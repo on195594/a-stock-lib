@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.6.4] — 2026-09-11
+
+- 固化 A-F 六框架 excellent/pass 严格边界及上下 epsilon 的公开评分回归合同，覆盖 score、band、reason 与 rule hash。
+- 增加最小 GitHub Actions 门禁，在 PR 与 `master` 推送上运行全量测试并构建 wheel/sdist。
+
 ## [0.6.3] — 2026-09-04
 
 - `compact_date` 增强：支持直接传入 `datetime.date` 对象与字符串首尾空白过滤，防止非法切片；`_compact` 统一委托。
