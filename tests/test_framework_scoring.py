@@ -22,6 +22,75 @@ def _subjective(*categories: SubjectiveCategory) -> list[SubjectiveAssessment]:
     return [_assessment(category) for category in categories]
 
 
+_BOUNDARY_CASES = (
+    ("A", "roe_3y_avg", 15.0, 10.0, 15.0, True),
+    ("B", "npl_ratio", 1.0, 1.5, 15.0, False),
+    ("C", "stressed_forward_dividend_yield", 5.0, 3.0, 15.0, True),
+    ("D", "debt_ratio", 55.0, 70.0, 10.0, False),
+    ("E", "inventory_turnover_days", 60.0, 120.0, 10.0, False),
+    ("F", "revenue_growth_3y", 30.0, 15.0, 15.0, True),
+)
+_EPSILON = 0.01
+
+
+def _boundary_points(
+    excellent: float,
+    passed: float,
+    maximum: float,
+    higher_is_better: bool,
+) -> tuple[tuple[float, str, float, str], ...]:
+    if higher_is_better:
+        return (
+            (excellent - _EPSILON, "pass", maximum / 2, f"{excellent - _EPSILON:g}>{passed:g}"),
+            (excellent, "pass", maximum / 2, f"{excellent:g}>{passed:g}"),
+            (excellent + _EPSILON, "excellent", maximum, f"{excellent + _EPSILON:g}>{excellent:g}"),
+            (passed - _EPSILON, "fail", 0.0, f"{passed - _EPSILON:g}<=pass threshold"),
+            (passed, "fail", 0.0, f"{passed:g}<=pass threshold"),
+            (passed + _EPSILON, "pass", maximum / 2, f"{passed + _EPSILON:g}>{passed:g}"),
+        )
+    return (
+        (excellent - _EPSILON, "excellent", maximum, f"{excellent - _EPSILON:g}<{excellent:g}"),
+        (excellent, "pass", maximum / 2, f"{excellent:g}<{passed:g}"),
+        (excellent + _EPSILON, "pass", maximum / 2, f"{excellent + _EPSILON:g}<{passed:g}"),
+        (passed - _EPSILON, "pass", maximum / 2, f"{passed - _EPSILON:g}<{passed:g}"),
+        (passed, "fail", 0.0, f"{passed:g}>=pass threshold"),
+        (passed + _EPSILON, "fail", 0.0, f"{passed + _EPSILON:g}>=pass threshold"),
+    )
+
+
+@pytest.mark.parametrize(
+    ("framework", "metric", "excellent", "passed", "maximum", "higher_is_better"),
+    _BOUNDARY_CASES,
+)
+def test_exact_boundaries_follow_documented_strict_comparisons(
+    framework: str,
+    metric: str,
+    excellent: float,
+    passed: float,
+    maximum: float,
+    higher_is_better: bool,
+) -> None:
+    expected_hash = framework_scoring.framework_rule_hash(framework)
+
+    for value, expected_band, expected_score, expected_reason in _boundary_points(
+        excellent, passed, maximum, higher_is_better
+    ):
+        result = score_fundamentals(framework, {metric: value}, [])
+        dimension = next(item for item in result.dimensions if item.key == metric)
+        actual_band = (
+            "excellent"
+            if dimension.score == maximum
+            else "pass"
+            if dimension.score == maximum / 2
+            else "fail"
+        )
+
+        assert actual_band == expected_band
+        assert dimension.score == expected_score
+        assert dimension.reason == expected_reason
+        assert result.rule_hash == expected_hash
+
+
 @pytest.mark.parametrize(
     ("framework", "metrics", "subjective", "cycle"),
     [
