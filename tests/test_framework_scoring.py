@@ -11,7 +11,15 @@ from a_stock_lib.contracts import (
     SubjectiveAssessment,
     SubjectiveCategory,
 )
-from a_stock_lib.framework_scoring import score_fundamentals
+from a_stock_lib.framework_scoring import (
+    RuleBand,
+    RuleDirection,
+    calculate_operating_cf_to_net_profit,
+    calculate_payout_ratio,
+    classify_framework_rule,
+    get_framework_rule,
+    score_fundamentals,
+)
 
 
 def _assessment(category: SubjectiveCategory, rating: RatingTier = RatingTier.HIGH) -> SubjectiveAssessment:
@@ -282,3 +290,128 @@ def test_clear_rule_hash_cache() -> None:
     framework_scoring.clear_rule_hash_cache()
     h2 = framework_scoring.framework_rule_hash("B")
     assert h1 == h2
+
+
+@pytest.mark.parametrize(
+    ("framework", "rule_id", "direction", "excellent", "passed"),
+    [
+        ("A", "roe_3y_avg", RuleDirection.HIGHER_BETTER, 15, 10),
+        ("A", "net_profit_growth", RuleDirection.HIGHER_BETTER, 15, 8),
+        ("A", "debt_ratio", RuleDirection.LOWER_BETTER, 40, 60),
+        ("A", "gross_margin", RuleDirection.HIGHER_BETTER, 30, None),
+        ("B", "roe_3y_avg", RuleDirection.HIGHER_BETTER, 13, 9),
+        ("C", "roe_3y_avg", RuleDirection.HIGHER_BETTER, 12, 8),
+        ("C", "eps", RuleDirection.HIGHER_BETTER, None, 0),
+        ("C", "debt_ratio", RuleDirection.LOWER_BETTER, 45, 65),
+        ("C", "payout_ratio", RuleDirection.HIGHER_BETTER, None, 40),
+        ("D", "debt_ratio", RuleDirection.LOWER_BETTER, 55, 70),
+        ("E", "roe_3y_avg", RuleDirection.HIGHER_BETTER, 20, 12),
+        ("E", "net_profit_growth", RuleDirection.HIGHER_BETTER, 15, 8),
+        ("E", "gross_margin", RuleDirection.HIGHER_BETTER, 50, 30),
+        ("F", "revenue_growth_3y", RuleDirection.HIGHER_BETTER, 30, 15),
+        ("F", "gross_margin", RuleDirection.HIGHER_BETTER, 50, 30),
+        ("F", "operating_cf_to_net_profit", RuleDirection.HIGHER_BETTER, None, 0.8),
+    ],
+)
+def test_public_owner_rules_expose_consumer_threshold_metadata(
+    framework: str,
+    rule_id: str,
+    direction: RuleDirection,
+    excellent: float | None,
+    passed: float | None,
+) -> None:
+    rule = get_framework_rule(framework, rule_id)
+
+    assert rule.framework is FrameworkKey(framework)
+    assert rule.rule_id == rule_id
+    assert rule.direction is direction
+    assert rule.excellent_threshold == excellent
+    assert rule.pass_threshold == passed
+
+
+@pytest.mark.parametrize(
+    ("framework", "rule_id", "value", "expected"),
+    [
+        ("A", "roe_3y_avg", 15, RuleBand.PASS),
+        ("A", "roe_3y_avg", 10, RuleBand.FAIL),
+        ("A", "debt_ratio", 40, RuleBand.PASS),
+        ("A", "debt_ratio", 60, RuleBand.FAIL),
+        ("A", "gross_margin", 30, RuleBand.FAIL),
+        ("C", "eps", 0, RuleBand.FAIL),
+        ("C", "payout_ratio", 40, RuleBand.FAIL),
+        ("F", "operating_cf_to_net_profit", 0.8, RuleBand.FAIL),
+    ],
+)
+def test_public_owner_classification_uses_strict_boundaries(
+    framework: str, rule_id: str, value: object, expected: RuleBand
+) -> None:
+    result = classify_framework_rule(framework, rule_id, value)
+
+    assert result.rule == get_framework_rule(framework, rule_id)
+    assert result.value == value
+    assert result.band is expected
+
+
+@pytest.mark.parametrize(
+    "value", [None, True, "15", float("nan"), float("inf"), 10**400]
+)
+def test_public_owner_classification_treats_invalid_values_as_missing(value: object) -> None:
+    result = classify_framework_rule("A", "roe_3y_avg", value)
+
+    assert result.value is None
+    assert result.band is RuleBand.MISSING
+
+
+def test_c_payout_boundary_keeps_existing_mature_branch_semantics() -> None:
+    score = score_fundamentals(
+        FrameworkKey.C,
+        {
+            "roe_3y_avg": 13,
+            "eps": 1,
+            "dps": 0.4,
+            "dps_eps_same_period_basis": True,
+            "profit_rises_with_commodity": True,
+            "debt_ratio": 44,
+            "stressed_forward_dividend_yield": 5.1,
+            "reserve_life_years": 20,
+        },
+        _subjective(SubjectiveCategory.MOAT, SubjectiveCategory.INDUSTRY_POSITION),
+        cycle_stage=CycleStage.UPTREND,
+    )
+
+    dimensions = {item.key: item for item in score.dimensions}
+    assert dimensions["stressed_forward_dividend_yield"].max_score == 15
+    assert "production_reserve_delivery" not in dimensions
+
+
+def test_public_owner_arithmetic_helpers_fail_closed() -> None:
+    assert calculate_payout_ratio(2, 4) == 50
+    assert calculate_payout_ratio(-1, 4) is None
+    assert calculate_payout_ratio(1, 0) is None
+    assert calculate_operating_cf_to_net_profit(2, 4) == 0.5
+    assert calculate_operating_cf_to_net_profit(1, 0) is None
+    assert calculate_operating_cf_to_net_profit(float("inf"), 1) is None
+    assert calculate_payout_ratio(1e308, 1e-308) is None
+    assert calculate_operating_cf_to_net_profit(1e308, 1e-308) is None
+
+
+def test_rule_hash_changes_with_public_owner_rule(monkeypatch) -> None:
+    before = framework_scoring.framework_rule_hash("A")
+    rule = get_framework_rule("A", "roe_3y_avg")
+    monkeypatch.setitem(
+        framework_scoring.FRAMEWORK_THRESHOLD_RULES,
+        (FrameworkKey.A, "roe_3y_avg"),
+        framework_scoring.FrameworkThresholdRule(
+            rule.framework,
+            rule.rule_id,
+            rule.metric_key,
+            rule.direction,
+            16,
+            rule.pass_threshold,
+        ),
+    )
+    changed_score = score_fundamentals("A", {"roe_3y_avg": 16}, [])
+    roe = next(item for item in changed_score.dimensions if item.key == "roe_3y_avg")
+
+    assert roe.score == 7.5
+    assert framework_scoring.framework_rule_hash("A") != before
