@@ -10,7 +10,7 @@ A 股投研三系统（`a-stock-tracker`/`a-stock-research`/`a-stock-monitor`）
 - 架构决策 / 为什么这么设计 → `docs/design/2026-06-22-three-system-restructure-design.md`
 - 实施任务拆解 / 验收标准 → `docs/plans/2026-06-23-a-stock-lib-shared-package-plan.md`
 - 跨 agent CLI 的精简仓库边界 → `AGENTS.md`；Claude 专属流程保留在本文件
-- 发版全流程固定清单（build wheel → 装 tracker/research → 跑消费方测试 → 同步文档） → `docs/RELEASE_CHECKLIST.md`
+- 发版全流程固定清单（build wheel → 装 tracker/agent-skills runtime → 跑消费方测试 → 同步文档） → `docs/RELEASE_CHECKLIST.md`
 
 ---
 
