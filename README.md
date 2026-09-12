@@ -8,7 +8,7 @@ A 股投研三系统（`a-stock-tracker` 评分管道 / `a-stock-research` 新�
 
 ## 当前状态（2026-09-12）
 
-当前候选版本 `0.7.0`：增加 A-F 逐项 typed owner contract 与 cache-only 行业映射读取入口。生产消费者当前锁定已发布的 `0.6.4`；只有 `0.7.0` GitHub Release wheel 发布并通过下游 release-candidate gate 后才升级。
+当前已发布版本为 `0.7.0`：增加 A-F 逐项 typed owner contract 与 cache-only 行业映射读取入口。GitHub Release wheel 的 SHA-256 为 `7c4a16d452f34574584531bab6fe9d150f3cb844e5c9b2fe072295f6bb2ee385`；`a-stock-tracker` 与 `a-stock-agent-skills` 均已通过下游 gate，并固定该不可变 Release URL 与摘要。
 
 下游为 `a-stock-tracker` 与 `/home/lin/a-stock-agent-skills`；后者是 research/monitor/QA 与 runtime 的唯一 canonical carrier。
 
