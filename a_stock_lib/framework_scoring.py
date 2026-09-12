@@ -6,6 +6,7 @@ import hashlib
 import inspect
 import math
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any, Mapping, Sequence
 
 from a_stock_lib.contracts import (
@@ -43,6 +44,141 @@ class FrameworkScore:
         return bool(self.red_flags)
 
 
+class RuleDirection(str, Enum):
+    HIGHER_BETTER = "higher_better"
+    LOWER_BETTER = "lower_better"
+
+
+class RuleBand(str, Enum):
+    EXCELLENT = "excellent"
+    PASS = "pass"
+    FAIL = "fail"
+    MISSING = "missing"
+
+
+@dataclass(frozen=True)
+class FrameworkThresholdRule:
+    framework: FrameworkKey
+    rule_id: str
+    metric_key: str
+    direction: RuleDirection
+    excellent_threshold: float | None
+    pass_threshold: float | None
+
+
+@dataclass(frozen=True)
+class RuleClassification:
+    rule: FrameworkThresholdRule
+    value: float | None
+    band: RuleBand
+
+
+def _rule(
+    framework: FrameworkKey,
+    rule_id: str,
+    metric_key: str,
+    direction: RuleDirection,
+    excellent: float | None,
+    passed: float | None,
+) -> FrameworkThresholdRule:
+    return FrameworkThresholdRule(framework, rule_id, metric_key, direction, excellent, passed)
+
+
+FRAMEWORK_THRESHOLD_RULES: dict[tuple[FrameworkKey, str], FrameworkThresholdRule] = {
+    (rule.framework, rule.rule_id): rule
+    for rule in (
+        _rule(FrameworkKey.A, "roe_3y_avg", "roe_3y_avg", RuleDirection.HIGHER_BETTER, 15, 10),
+        _rule(FrameworkKey.A, "net_profit_growth", "net_profit_growth_3y", RuleDirection.HIGHER_BETTER, 15, 8),
+        _rule(FrameworkKey.A, "debt_ratio", "debt_ratio", RuleDirection.LOWER_BETTER, 40, 60),
+        _rule(FrameworkKey.A, "gross_margin", "gross_margin", RuleDirection.HIGHER_BETTER, 30, None),
+        _rule(FrameworkKey.B, "roe_3y_avg", "roe_weighted_annualized", RuleDirection.HIGHER_BETTER, 13, 9),
+        _rule(FrameworkKey.C, "roe_3y_avg", "roe_3y_avg", RuleDirection.HIGHER_BETTER, 12, 8),
+        _rule(FrameworkKey.C, "eps", "eps", RuleDirection.HIGHER_BETTER, None, 0),
+        _rule(FrameworkKey.C, "debt_ratio", "debt_ratio", RuleDirection.LOWER_BETTER, 45, 65),
+        _rule(FrameworkKey.C, "payout_ratio", "payout_ratio", RuleDirection.HIGHER_BETTER, None, 40),
+        _rule(FrameworkKey.D, "debt_ratio", "debt_ratio", RuleDirection.LOWER_BETTER, 55, 70),
+        _rule(FrameworkKey.E, "roe_3y_avg", "roe_3y_avg", RuleDirection.HIGHER_BETTER, 20, 12),
+        _rule(FrameworkKey.E, "net_profit_growth", "net_profit_growth_3y", RuleDirection.HIGHER_BETTER, 15, 8),
+        _rule(FrameworkKey.E, "gross_margin", "gross_margin", RuleDirection.HIGHER_BETTER, 50, 30),
+        _rule(FrameworkKey.F, "revenue_growth_3y", "revenue_growth_3y", RuleDirection.HIGHER_BETTER, 30, 15),
+        _rule(FrameworkKey.F, "gross_margin", "gross_margin", RuleDirection.HIGHER_BETTER, 50, 30),
+        _rule(FrameworkKey.F, "operating_cf_to_net_profit", "operating_cf_to_net_profit", RuleDirection.HIGHER_BETTER, None, 0.8),
+    )
+}
+
+
+def get_framework_rule(framework: FrameworkKey | str, rule_id: str) -> FrameworkThresholdRule:
+    """Return one consumer-facing A-F threshold rule."""
+    key = framework if isinstance(framework, FrameworkKey) else FrameworkKey(framework.upper())
+    try:
+        return FRAMEWORK_THRESHOLD_RULES[(key, rule_id)]
+    except KeyError as exc:
+        raise KeyError(f"unknown framework rule: {key.value}.{rule_id}") from exc
+
+
+def framework_threshold_rules(framework: FrameworkKey | str) -> tuple[FrameworkThresholdRule, ...]:
+    """Return all consumer-facing threshold rules for a framework."""
+    key = framework if isinstance(framework, FrameworkKey) else FrameworkKey(framework.upper())
+    return tuple(rule for (rule_framework, _), rule in FRAMEWORK_THRESHOLD_RULES.items() if rule_framework is key)
+
+
+def _finite_number(value: object) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    try:
+        parsed = float(value)
+    except (OverflowError, ValueError):
+        return None
+    return parsed if math.isfinite(parsed) else None
+
+
+def classify_framework_rule(
+    framework: FrameworkKey | str, rule_id: str, value: object
+) -> RuleClassification:
+    """Classify a value with strict owner thresholds; invalid values are missing."""
+    rule = get_framework_rule(framework, rule_id)
+    parsed = _finite_number(value)
+    if parsed is None:
+        return RuleClassification(rule, None, RuleBand.MISSING)
+    excellent = rule.excellent_threshold
+    passed = rule.pass_threshold
+    if rule.direction is RuleDirection.HIGHER_BETTER:
+        if excellent is not None and parsed > excellent:
+            band = RuleBand.EXCELLENT
+        elif passed is not None and parsed > passed:
+            band = RuleBand.PASS
+        else:
+            band = RuleBand.FAIL
+    else:
+        if excellent is not None and parsed < excellent:
+            band = RuleBand.EXCELLENT
+        elif passed is not None and parsed < passed:
+            band = RuleBand.PASS
+        else:
+            band = RuleBand.FAIL
+    return RuleClassification(rule, parsed, band)
+
+
+def calculate_payout_ratio(dps: object, eps: object) -> float | None:
+    """Return payout ratio percent when inputs have economic meaning."""
+    parsed_dps, parsed_eps = _finite_number(dps), _finite_number(eps)
+    if parsed_dps is None or parsed_eps is None or parsed_dps < 0 or parsed_eps <= 0:
+        return None
+    ratio = parsed_dps / parsed_eps * 100
+    return ratio if math.isfinite(ratio) else None
+
+
+def calculate_operating_cf_to_net_profit(
+    operating_cf_per_share: object, eps: object
+) -> float | None:
+    """Return the per-share OCF/profit proxy when EPS is positive."""
+    parsed_cf, parsed_eps = _finite_number(operating_cf_per_share), _finite_number(eps)
+    if parsed_cf is None or parsed_eps is None or parsed_eps <= 0:
+        return None
+    ratio = parsed_cf / parsed_eps
+    return ratio if math.isfinite(ratio) else None
+
+
 Metrics = Mapping[str, Any]
 ScorerResult = tuple[list[DimensionScore], list[str], list[str]]
 RULE_VERSION = "2026-08-23.v1"
@@ -56,6 +192,13 @@ _SHARED_RULE_FUNCTIONS = (
     "_subjective",
     "_scaled",
     "_common_red_flags",
+    "get_framework_rule",
+    "framework_threshold_rules",
+    "classify_framework_rule",
+    "_finite_number",
+    "_rule_dimension",
+    "calculate_payout_ratio",
+    "calculate_operating_cf_to_net_profit",
 )
 
 
@@ -85,8 +228,15 @@ def framework_rule_hash(framework: FrameworkKey | str) -> str:
     scorer_name = f"_score_{key.value.lower()}"
     names = (*_SHARED_RULE_FUNCTIONS, scorer_name)
     subjects = ",".join(sorted(category.value for category in required_subjective_categories(key)))
-    objs = (DimensionScore, FrameworkScore, *(globals()[name] for name in names))
-    return _cached_rule_hash(key.value, subjects, *objs)
+    rules = repr(framework_threshold_rules(key))
+    objs = (
+        DimensionScore,
+        FrameworkScore,
+        FrameworkThresholdRule,
+        RuleClassification,
+        *(globals()[name] for name in names),
+    )
+    return _cached_rule_hash(key.value, f"{subjects}\n{rules}", *objs)
 
 
 def clear_rule_hash_cache() -> None:
@@ -136,11 +286,7 @@ def score_fundamentals(
 
 
 def _number(metrics: Metrics, key: str) -> float | None:
-    value = metrics.get(key)
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        return None
-    parsed = float(value)
-    return parsed if math.isfinite(parsed) else None
+    return _finite_number(metrics.get(key))
 
 
 def _boolean(metrics: Metrics, key: str) -> bool | None:
@@ -170,6 +316,26 @@ def _lower(key: str, value: float | None, excellent: float, passed: float, maxim
     if value < passed:
         return DimensionScore(key, maximum / 2, maximum, f"{value:g}<{passed:g}")
     return DimensionScore(key, 0.0, maximum, f"{value:g}>=pass threshold")
+
+
+def _rule_dimension(
+    framework: FrameworkKey, rule_id: str, value: object, maximum: float
+) -> DimensionScore:
+    result = classify_framework_rule(framework, rule_id, value)
+    rule, parsed = result.rule, result.value
+    if parsed is None:
+        return _missing(rule.metric_key, maximum)
+    if result.band is RuleBand.EXCELLENT:
+        score = maximum
+        reason = f"{parsed:g}{'>' if rule.direction is RuleDirection.HIGHER_BETTER else '<'}{rule.excellent_threshold:g}"
+    elif result.band is RuleBand.PASS:
+        score = maximum / 2
+        reason = f"{parsed:g}{'>' if rule.direction is RuleDirection.HIGHER_BETTER else '<'}{rule.pass_threshold:g}"
+    else:
+        score = 0.0
+        operator = "<=" if rule.direction is RuleDirection.HIGHER_BETTER else ">="
+        reason = f"{parsed:g}{operator}pass threshold"
+    return DimensionScore(rule.metric_key, score, maximum, reason)
 
 
 def _subjective(
@@ -202,15 +368,16 @@ def _score_a(
     _cycle: CycleStage | None,
 ) -> ScorerResult:
     debt = _number(metrics, "debt_ratio")
-    debt_item = _lower("debt_ratio", debt, 40, 60, 10)
+    debt_item = _rule_dimension(FrameworkKey.A, "debt_ratio", debt, 10)
     interest_debt = _number(metrics, "interest_bearing_to_total_debt")
     if debt is not None and 60 <= debt <= 75 and interest_debt is not None and interest_debt < 40:
         debt_item = DimensionScore("debt_ratio", 5, 10, "capital-intensive debt exception")
     gross_margin = _number(metrics, "gross_margin")
     stable = _boolean(metrics, "gross_margin_stable")
+    margin_band = classify_framework_rule(FrameworkKey.A, "gross_margin", gross_margin).band
     if gross_margin is None or stable is None:
         margin_item = _missing("gross_margin_stability", 10)
-    elif gross_margin > 30 and stable:
+    elif margin_band is RuleBand.EXCELLENT and stable:
         margin_item = DimensionScore("gross_margin_stability", 10, 10, "margin>30 and stable")
     elif stable:
         margin_item = DimensionScore("gross_margin_stability", 5, 10, "no material decline")
@@ -228,8 +395,8 @@ def _score_a(
     if pledge is not None and pledge > 70:
         red.append("controller_pledge_above_70")
     return [
-        _higher("roe_3y_avg", _number(metrics, "roe_3y_avg"), 15, 10, 15),
-        _higher("net_profit_growth_3y", _number(metrics, "net_profit_growth_3y"), 15, 8, 10),
+        _rule_dimension(FrameworkKey.A, "roe_3y_avg", metrics.get("roe_3y_avg"), 15),
+        _rule_dimension(FrameworkKey.A, "net_profit_growth", metrics.get("net_profit_growth_3y"), 10),
         debt_item,
         margin_item,
         _subjective("moat", SubjectiveCategory.MOAT, assessments, 10),
@@ -270,7 +437,7 @@ def _score_b(
         red.append("core_tier1_capital_declining")
     gates = [] if cycle is not None else ["cycle_stage"]
     return [
-        _higher("roe_weighted_annualized", _number(metrics, "roe_weighted_annualized"), 13, 9, 15),
+        _rule_dimension(FrameworkKey.B, "roe_3y_avg", metrics.get("roe_weighted_annualized"), 15),
         nim_item,
         npl,
         provision,
@@ -287,13 +454,20 @@ def _score_c(
     dps = _number(metrics, "dps")
     eps = _number(metrics, "eps")
     same_basis = _boolean(metrics, "dps_eps_same_period_basis")
-    growth = bool(dps is not None and eps is not None and eps > 0 and same_basis and dps / eps < 0.4)
+    payout_ratio = calculate_payout_ratio(dps, eps)
+    payout_rule = get_framework_rule(FrameworkKey.C, "payout_ratio")
+    growth = bool(
+        same_basis
+        and payout_ratio is not None
+        and payout_rule.pass_threshold is not None
+        and payout_ratio < payout_rule.pass_threshold
+    )
     profit_rises = _boolean(metrics, "profit_rises_with_commodity")
     if eps is None or profit_rises is None:
         profit = _missing("net_profit_trend", 10)
     elif profit_rises:
         profit = DimensionScore("net_profit_trend", 10, 10, "rises with commodity")
-    elif eps >= 0:
+    elif classify_framework_rule(FrameworkKey.C, "eps", eps).band is RuleBand.PASS:
         profit = DimensionScore("net_profit_trend", 5, 10, "not loss-making")
     else:
         profit = DimensionScore("net_profit_trend", 0, 10, "loss-making")
@@ -305,9 +479,9 @@ def _score_c(
     if cycle is CycleStage.DOWNTREND:
         profit = _scaled(profit, 0.5, "downtrend discount")
     dimensions = [
-        _higher("roe_3y_avg", _number(metrics, "roe_3y_avg"), 12, 8, 10),
+        _rule_dimension(FrameworkKey.C, "roe_3y_avg", metrics.get("roe_3y_avg"), 10),
         profit,
-        _lower("debt_ratio", _number(metrics, "debt_ratio"), 45, 65, 10),
+        _rule_dimension(FrameworkKey.C, "debt_ratio", metrics.get("debt_ratio"), 10),
         yield_item,
     ]
     if growth:
@@ -372,7 +546,7 @@ def _score_d(
     return [
         roe_item,
         business,
-        _lower("debt_ratio", debt, 55, 70, 10),
+        _rule_dimension(FrameworkKey.D, "debt_ratio", debt, 10),
         yield_item,
         _subjective("franchise_scarcity", SubjectiveCategory.FRANCHISE_SCARCITY, assessments, 10),
         _subjective("industry_position", SubjectiveCategory.INDUSTRY_POSITION, assessments, 5),
@@ -389,9 +563,9 @@ def _score_e(
         if _boolean(metrics, key):
             red.append(key)
     return [
-        _higher("roe_3y_avg", _number(metrics, "roe_3y_avg"), 20, 12, 15),
-        _higher("net_profit_growth_3y", _number(metrics, "net_profit_growth_3y"), 15, 8, 10),
-        _higher("gross_margin", _number(metrics, "gross_margin"), 50, 30, 15),
+        _rule_dimension(FrameworkKey.E, "roe_3y_avg", metrics.get("roe_3y_avg"), 15),
+        _rule_dimension(FrameworkKey.E, "net_profit_growth", metrics.get("net_profit_growth_3y"), 10),
+        _rule_dimension(FrameworkKey.E, "gross_margin", metrics.get("gross_margin"), 15),
         _lower("inventory_turnover_days", _number(metrics, "inventory_turnover_days"), 60, 120, 10),
         _subjective("brand_channel", SubjectiveCategory.BRAND_CHANNEL, assessments, 5),
         _subjective("industry_position", SubjectiveCategory.INDUSTRY_POSITION, assessments, 5),
@@ -405,11 +579,12 @@ def _score_f(
 ) -> ScorerResult:
     margin = _number(metrics, "gross_margin")
     margin_stable = _boolean(metrics, "gross_margin_stable")
+    margin_band = classify_framework_rule(FrameworkKey.F, "gross_margin", margin).band
     if margin is None or margin_stable is None:
         margin_item = _missing("gross_margin_trend", 15)
-    elif margin > 50 and margin_stable:
+    elif margin_band is RuleBand.EXCELLENT and margin_stable:
         margin_item = DimensionScore("gross_margin_trend", 15, 15, "margin>50 and stable")
-    elif margin > 30 and margin_stable:
+    elif margin_band is RuleBand.PASS and margin_stable:
         margin_item = DimensionScore("gross_margin_trend", 7.5, 15, "margin>30 and stable")
     else:
         margin_item = DimensionScore("gross_margin_trend", 0, 15, "margin/trend below threshold")
@@ -420,7 +595,7 @@ def _score_f(
         cash_item = _missing("operating_cash_flow_quality", 5)
     elif fcf_positive and fcf_gt_profit:
         cash_item = DimensionScore("operating_cash_flow_quality", 5, 5, "FCF positive and above profit")
-    elif ocf_ratio > 0.8:
+    elif classify_framework_rule(FrameworkKey.F, "operating_cf_to_net_profit", ocf_ratio).band is RuleBand.PASS:
         cash_item = DimensionScore("operating_cash_flow_quality", 2.5, 5, "OCF/profit>0.8")
     else:
         cash_item = DimensionScore("operating_cash_flow_quality", 0, 5, "cash conversion below threshold")
@@ -435,7 +610,7 @@ def _score_f(
         if _boolean(metrics, key):
             red.append(key)
     return [
-        _higher("revenue_growth_3y", _number(metrics, "revenue_growth_3y"), 30, 15, 15),
+        _rule_dimension(FrameworkKey.F, "revenue_growth_3y", metrics.get("revenue_growth_3y"), 15),
         margin_item,
         _higher("rd_to_revenue", _number(metrics, "rd_to_revenue"), 15, 8, 10),
         _subjective("order_visibility", SubjectiveCategory.MOAT, assessments, 10),

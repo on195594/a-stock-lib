@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import time
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -100,12 +101,13 @@ def test_read_tushare_token_handles_spaces_comments_and_directories(tmp_path):
 
 def test_fetch_industry_map_uses_cache_within_ttl(tmp_path):
     cache_path = tmp_path / "cache.json"
+    fetched_at_epoch = time.time()
     cache_path.write_text(
         json.dumps(
             {
                 "industry_map": {"600036": "银行"},
-                "fetched_at": "2026-06-23T00:00:00",
-                "fetched_at_epoch": time.time(),
+                "fetched_at": datetime.fromtimestamp(fetched_at_epoch).isoformat(),
+                "fetched_at_epoch": fetched_at_epoch,
             }
         )
     )
@@ -138,12 +140,13 @@ def test_fetch_industry_map_treats_corrupt_cache_as_miss(tmp_path):
 
 def test_fetch_industry_map_ignores_stale_cache(tmp_path):
     cache_path = tmp_path / "cache.json"
+    fetched_at_epoch = time.time() - 999999
     cache_path.write_text(
         json.dumps(
             {
                 "industry_map": {"600036": "银行"},
-                "fetched_at": "2020-01-01T00:00:00",
-                "fetched_at_epoch": time.time() - 999999,
+                "fetched_at": datetime.fromtimestamp(fetched_at_epoch).isoformat(),
+                "fetched_at_epoch": fetched_at_epoch,
             }
         )
     )
@@ -159,10 +162,11 @@ def test_fetch_industry_map_ignores_stale_cache(tmp_path):
 
 def test_write_cache_preserves_existing_cache_when_replace_fails(tmp_path, monkeypatch):
     cache_path = tmp_path / "cache.json"
+    fetched_at_epoch = time.time()
     existing_payload = {
         "industry_map": {"600036": "银行"},
-        "fetched_at": "2026-06-23T00:00:00",
-        "fetched_at_epoch": time.time(),
+        "fetched_at": datetime.fromtimestamp(fetched_at_epoch).isoformat(),
+        "fetched_at_epoch": fetched_at_epoch,
     }
     cache_path.write_text(json.dumps(existing_payload))
     provider = TushareFundamentalsProvider(token="fake-token", cache_path=cache_path)
@@ -245,3 +249,142 @@ def test_fetch_industry_map_drops_nan_industries_and_normalizes_values(tmp_path)
 
     assert result.status == "ok"
     assert result.value == {"600036": "银行", "300750": "123"}
+
+
+def _write_industry_cache(
+    path: Path,
+    industry_map: object,
+    fetched_at_epoch: int | float,
+    fetched_at: object | None = None,
+) -> None:
+    if fetched_at is None:
+        fetched_at = datetime.fromtimestamp(float(fetched_at_epoch)).isoformat()
+    path.write_text(
+        json.dumps(
+            {
+                "industry_map": industry_map,
+                "fetched_at": fetched_at,
+                "fetched_at_epoch": fetched_at_epoch,
+            }
+        )
+    )
+
+
+def test_read_cached_industry_map_is_cache_only_and_returns_fresh_mapping(
+    tmp_path, monkeypatch
+):
+    cache_path = tmp_path / "cache.json"
+    _write_industry_cache(cache_path, {"600036": " 银行 "}, time.time())
+    provider = TushareFundamentalsProvider(cache_path=cache_path, ttl_seconds=3600)
+    monkeypatch.setattr(provider, "_request_frame", lambda *args, **kwargs: pytest.fail("network"))
+    monkeypatch.setattr(provider, "_write_cache", lambda *args, **kwargs: pytest.fail("write"))
+    before = cache_path.read_bytes()
+
+    result = provider.read_cached_industry_map()
+
+    assert result.status == "ok"
+    assert result.value == {"600036": "银行"}
+    assert result.error_code is None
+    assert result.fallback_reason is None
+    assert cache_path.read_bytes() == before
+
+
+@pytest.mark.parametrize(
+    ("age", "status", "error_code", "has_value"),
+    [
+        (7200, "failed", "CACHE_STALE", False),
+        (-60, "failed", "CACHE_FUTURE_TIMESTAMP", False),
+    ],
+)
+def test_read_cached_industry_map_distinguishes_stale_and_future_timestamp(
+    tmp_path, age, status, error_code, has_value
+):
+    cache_path = tmp_path / "cache.json"
+    _write_industry_cache(cache_path, {"600036": "银行"}, time.time() - age)
+    provider = TushareFundamentalsProvider(cache_path=cache_path, ttl_seconds=3600)
+
+    result = provider.read_cached_industry_map()
+
+    assert result.status == status
+    assert result.error_code == error_code
+    assert result.fallback_reason == error_code
+    assert (result.value is not None) is has_value
+
+
+def test_read_cached_industry_map_distinguishes_missing_and_corrupt(tmp_path):
+    cache_path = tmp_path / "cache.json"
+    provider = TushareFundamentalsProvider(cache_path=cache_path)
+
+    missing = provider.read_cached_industry_map()
+    cache_path.write_text("{")
+    corrupt = provider.read_cached_industry_map()
+
+    assert (missing.status, missing.error_code, missing.fallback_reason) == (
+        "failed",
+        "CACHE_MISSING",
+        "CACHE_MISSING",
+    )
+    assert (corrupt.status, corrupt.error_code, corrupt.fallback_reason) == (
+        "failed",
+        "CACHE_CORRUPT",
+        "CACHE_CORRUPT",
+    )
+
+
+@pytest.mark.parametrize(
+    ("fetched_at", "epoch", "error_code"),
+    [
+        ("not-a-date", 1, "CACHE_MALFORMED"),
+        ("2000-01-01T00:00:00", 10**400, "CACHE_MALFORMED"),
+        ("2099-01-01T00:00:00", time.time(), "CACHE_FUTURE_TIMESTAMP"),
+        ("2000-01-01T00:00:00", time.time(), "CACHE_MALFORMED"),
+    ],
+)
+def test_read_cached_industry_map_rejects_invalid_or_inconsistent_timestamps(
+    tmp_path, fetched_at, epoch, error_code
+):
+    cache_path = tmp_path / "cache.json"
+    _write_industry_cache(cache_path, {"600036": "银行"}, epoch, fetched_at)
+
+    result = TushareFundamentalsProvider(cache_path=cache_path).read_cached_industry_map()
+
+    assert result.status == "failed"
+    assert result.value is None
+    assert result.error_code == error_code
+
+
+def test_read_cached_industry_map_translates_invalid_utf8_to_corrupt(tmp_path):
+    cache_path = tmp_path / "cache.json"
+    cache_path.write_bytes(b"\xff")
+
+    result = TushareFundamentalsProvider(cache_path=cache_path).read_cached_industry_map()
+
+    assert result.status == "failed"
+    assert result.value is None
+    assert result.error_code == "CACHE_CORRUPT"
+
+
+@pytest.mark.parametrize(
+    "industry_map",
+    [
+        {},
+        {"60036": "银行"},
+        {"６０００３６": "银行"},
+        {"600036": "   "},
+        {"600036": "银行", "bad": "汽车"},
+        [["600036", "银行"]],
+    ],
+)
+def test_read_cached_industry_map_rejects_whole_malformed_mapping(
+    tmp_path, industry_map
+):
+    cache_path = tmp_path / "cache.json"
+    _write_industry_cache(cache_path, industry_map, time.time())
+    provider = TushareFundamentalsProvider(cache_path=cache_path)
+
+    result = provider.read_cached_industry_map()
+
+    assert result.status == "failed"
+    assert result.value is None
+    assert result.error_code == "CACHE_MALFORMED"
+    assert result.fallback_reason == "CACHE_MALFORMED"

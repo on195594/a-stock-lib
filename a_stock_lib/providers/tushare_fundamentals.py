@@ -1,13 +1,26 @@
 from __future__ import annotations
 
 import json
+import math
 import os
+import re
 import tempfile
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from a_stock_lib.market_data import MarketDataResult, now
+from a_stock_lib.market_data import (
+    CACHE_CORRUPT,
+    CACHE_FUTURE_TIMESTAMP,
+    CACHE_MALFORMED,
+    CACHE_MISSING,
+    CACHE_READ_FAILED,
+    CACHE_STALE,
+    MarketDataErrorCode,
+    MarketDataResult,
+    now,
+)
 from a_stock_lib.providers.tushare_common import (
     DEFAULT_ENV_PATH,
     TushareProviderBase,
@@ -17,6 +30,7 @@ from a_stock_lib.providers.tushare_common import (
 
 TUSHARE_FUNDAMENTALS_SOURCE = "tushare.stock_basic"
 _INDUSTRY_PARAMS = {"exchange": "", "list_status": "L", "fields": "ts_code,industry"}
+_STOCK_CODE_RE = re.compile(r"[0-9]{6}", re.ASCII)
 DEFAULT_CACHE_PATH = (
     Path.home() / ".cache" / "a_stock_lib" / "tushare_industry_map.json"
 )
@@ -86,24 +100,102 @@ class TushareFundamentalsProvider(TushareProviderBase):
         )
 
     def _read_cache(self) -> MarketDataResult[dict[str, str]] | None:
-        if not self.cache_path.exists():
-            return None
+        result = self.read_cached_industry_map()
+        return result if result.status == "ok" else None
+
+    def read_cached_industry_map(self) -> MarketDataResult[dict[str, str]]:
+        """Read and validate the configured cache without network access or writes."""
+        fingerprint = request_fingerprint("stock_basic", _INDUSTRY_PARAMS)
         try:
+            if not self.cache_path.is_file():
+                return self._cache_failure(CACHE_MISSING, fingerprint)
             payload = json.loads(self.cache_path.read_text(encoding="utf-8"))
-            age_seconds = time.time() - payload["fetched_at_epoch"]
-            if age_seconds > self.ttl_seconds:
-                return None
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            return self._cache_failure(CACHE_CORRUPT, fingerprint, str(exc))
+        except OSError as exc:
+            return self._cache_failure(CACHE_READ_FAILED, fingerprint, str(exc))
+
+        if not isinstance(payload, dict):
+            return self._cache_failure(CACHE_MALFORMED, fingerprint)
+        fetched_at = payload.get("fetched_at")
+        fetched_at_epoch = payload.get("fetched_at_epoch")
+        if not isinstance(fetched_at, str) or not fetched_at.strip():
+            return self._cache_failure(CACHE_MALFORMED, fingerprint)
+        if isinstance(fetched_at_epoch, bool) or not isinstance(
+            fetched_at_epoch, (int, float)
+        ):
+            return self._cache_failure(CACHE_MALFORMED, fingerprint)
+        try:
+            epoch = float(fetched_at_epoch)
+            parsed_epoch = datetime.fromisoformat(fetched_at).timestamp()
+        except (OverflowError, TypeError, ValueError):
+            return self._cache_failure(CACHE_MALFORMED, fingerprint)
+        if not math.isfinite(epoch) or not math.isfinite(parsed_epoch):
+            return self._cache_failure(CACHE_MALFORMED, fingerprint)
+
+        current_epoch = time.time()
+        if epoch > current_epoch or parsed_epoch > current_epoch:
+            return self._cache_failure(CACHE_FUTURE_TIMESTAMP, fingerprint)
+        if abs(parsed_epoch - epoch) > 1.0:
+            return self._cache_failure(CACHE_MALFORMED, fingerprint)
+        industry_map = self._validated_industry_map(payload.get("industry_map"))
+        if industry_map is None:
+            return self._cache_failure(CACHE_MALFORMED, fingerprint)
+
+        age_seconds = current_epoch - epoch
+        freshness_days = int(age_seconds / 86400)
+        if age_seconds > self.ttl_seconds:
             return MarketDataResult(
-                payload["industry_map"],
-                "ok",
+                None,
+                "failed",
                 TUSHARE_FUNDAMENTALS_SOURCE,
-                payload["fetched_at"],
-                freshness_days=int(age_seconds / 86400),
-                request_fingerprint=request_fingerprint("stock_basic", _INDUSTRY_PARAMS),
-                row_count=len(payload["industry_map"]),
+                fetched_at,
+                fallback_reason=CACHE_STALE,
+                error_code=CACHE_STALE,
+                freshness_days=freshness_days,
+                request_fingerprint=fingerprint,
+                row_count=len(industry_map),
             )
-        except Exception:
+        return MarketDataResult(
+            industry_map,
+            "ok",
+            TUSHARE_FUNDAMENTALS_SOURCE,
+            fetched_at,
+            freshness_days=freshness_days,
+            request_fingerprint=fingerprint,
+            row_count=len(industry_map),
+        )
+
+    @staticmethod
+    def _validated_industry_map(value: object) -> dict[str, str] | None:
+        if not isinstance(value, dict) or not value:
             return None
+        result: dict[str, str] = {}
+        for code, industry in value.items():
+            if (
+                not isinstance(code, str)
+                or _STOCK_CODE_RE.fullmatch(code) is None
+                or not isinstance(industry, str)
+                or not industry.strip()
+            ):
+                return None
+            result[code] = industry.strip()
+        return result
+
+    @staticmethod
+    def _cache_failure(
+        code: MarketDataErrorCode, fingerprint: str, message: str | None = None
+    ) -> MarketDataResult[dict[str, str]]:
+        return MarketDataResult(
+            None,
+            "failed",
+            TUSHARE_FUNDAMENTALS_SOURCE,
+            now(),
+            fallback_reason=code,
+            error_code=code,
+            error_message=message,
+            request_fingerprint=fingerprint,
+        )
 
     def _write_cache(self, industry_map: dict[str, str]) -> None:
         self.cache_path.parent.mkdir(parents=True, exist_ok=True)
