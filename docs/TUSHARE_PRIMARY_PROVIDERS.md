@@ -1,6 +1,6 @@
 # TuShare 生产主源 Provider API
 
-适用代码版本：`a-stock-lib==0.7.0` 候选版。生产消费者仍使用 `0.6.4`；只有在不可变 GitHub Release wheel 发布并校验后才切换到 `0.7.0`。
+适用代码版本：`a-stock-lib==0.7.0`。不可变 GitHub Release wheel 已发布并完成下游校验；生产消费者固定该 Release URL 与 SHA-256。
 
 ## 安装
 
