@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.7.0] — 2026-09-12
+
+- 新增 A-F 逐项 typed threshold/classification 公共合同；原有评分器复用同一套阈值并将合同纳入 rule hash。
+- 新增行业映射 cache-only 公共读取入口；过期、损坏、未来或矛盾时间戳均结构化 fail-closed，且不联网、不写缓存。
+
 ## [0.6.4] — 2026-09-11
 
 - 固化 A-F 六框架 excellent/pass 严格边界及上下 epsilon 的公开评分回归合同，覆盖 score、band、reason 与 rule hash。

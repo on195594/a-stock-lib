@@ -4,13 +4,13 @@
 
 A 股投研三系统（`a-stock-tracker`/`a-stock-research`/`a-stock-monitor`）共享的市场数据 Provider 原语包。从 `a-stock-tracker/lib/` 剥离，目标是消灭三套重复的行情/基本面抓取实现。
 
-**当前状态（2026-09-11）**：本仓库正在准备 `0.6.4` 候选版本，补齐六框架阈值边界回归与必需 CI；在创建不可变 GitHub Release 前不视为已发布。TuShare 行情/行业/估值/财务/分红 Provider、估值分位、六框架结构化合同与确定性基本面评分（report-only）保持不变；行情值、OHLC 与日期边界 fail-closed，行业缓存写失败返回结构化降级。**a-stock-tracker** 与统一的 **`a-stock-agent-skills` runtime** 仍使用已回读的 `0.6.3`，待 `0.6.4` Release wheel 发布并完成各自迁移后再切换；Agent prompt、rubric 和安装生命周期只归 `/home/lin/a-stock-agent-skills` 所有。
+**当前状态（2026-09-12）**：本仓库正在准备 `0.7.0` 候选版本，新增 A-F 逐项 typed owner contract 与 cache-only 行业映射读取入口；在创建不可变 GitHub Release 前不视为已发布。**a-stock-tracker** 与统一的 **`a-stock-agent-skills` runtime** 当前使用已发布的 `0.6.4`，待 `0.7.0` Release wheel 通过下游候选验证后再切换；Agent prompt、rubric 和安装生命周期只归 `/home/lin/a-stock-agent-skills` 所有。
 
 **文档指针**：
 - 架构决策 / 为什么这么设计 → `docs/design/2026-06-22-three-system-restructure-design.md`
 - 实施任务拆解 / 验收标准 → `docs/plans/2026-06-23-a-stock-lib-shared-package-plan.md`
 - 跨 agent CLI 的精简仓库边界 → `AGENTS.md`；Claude 专属流程保留在本文件
-- 发版全流程固定清单（build wheel → 装 tracker/research → 跑消费方测试 → 同步文档） → `docs/RELEASE_CHECKLIST.md`
+- 发版全流程固定清单（build wheel → 装 tracker/agent-skills runtime → 跑消费方测试 → 同步文档） → `docs/RELEASE_CHECKLIST.md`
 
 ---
 
