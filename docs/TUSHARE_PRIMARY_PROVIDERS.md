@@ -4,7 +4,7 @@
 
 ## 安装
 
-候选验证必须安装本提交构建并校验过哈希的 wheel；发布前不得把 `0.7.0` 当作可用的生产 artifact：
+本地候选验证应安装本提交构建并校验过哈希的 wheel；生产安装必须使用已发布的不可变 Release wheel 及固定 SHA-256：
 
 ```bash
 pip install ./dist/a_stock_lib-0.7.0-py3-none-any.whl
