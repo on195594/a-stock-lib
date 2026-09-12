@@ -1,13 +1,13 @@
 # TuShare 生产主源 Provider API
 
-适用代码版本：`a-stock-lib==0.6.4` 候选版。生产消费者仍使用 `0.6.3`；只有在不可变 GitHub Release wheel 发布并校验后才切换到 `0.6.4`。
+适用代码版本：`a-stock-lib==0.7.0` 候选版。生产消费者仍使用 `0.6.4`；只有在不可变 GitHub Release wheel 发布并校验后才切换到 `0.7.0`。
 
 ## 安装
 
-候选验证必须安装本提交构建并校验过哈希的 wheel；发布前不得把 `0.6.4` 当作可用的生产 artifact：
+候选验证必须安装本提交构建并校验过哈希的 wheel；发布前不得把 `0.7.0` 当作可用的生产 artifact：
 
 ```bash
-pip install ./dist/a_stock_lib-0.6.4-py3-none-any.whl
+pip install ./dist/a_stock_lib-0.7.0-py3-none-any.whl
 ```
 
 本版本固定 `tushare==1.4.29`。Token 优先级：构造参数 → `TUSHARE_TOKEN` → 显式 `env_path` 指向的文件。禁止在代码中硬编码 Token。

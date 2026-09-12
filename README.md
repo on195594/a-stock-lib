@@ -6,9 +6,9 @@ A 股投研三系统（`a-stock-tracker` 评分管道 / `a-stock-research` 新�
 
 详见设计文档：[`docs/design/2026-06-22-three-system-restructure-design.md`](docs/design/2026-06-22-three-system-restructure-design.md)。核心动机：三系统重复实现行情 Provider、AKShare 行业接口长期不稳定、止损系数差异化依赖脆弱的字符串反推框架。
 
-## 当前状态（2026-09-11）
+## 当前状态（2026-09-12）
 
-当前候选版本 `0.6.4`：固化 A-F 六框架评分的 authoritative 严格边界合同，并增加全量测试与构建 CI。生产消费者仍锁定已部署版本，待 GitHub Release wheel 发布和下游 release-candidate gate 通过后再升级。
+当前候选版本 `0.7.0`：增加 A-F 逐项 typed owner contract 与 cache-only 行业映射读取入口。生产消费者当前锁定已发布的 `0.6.4`；只有 `0.7.0` GitHub Release wheel 发布并通过下游 release-candidate gate 后才升级。
 
 下游为 `a-stock-tracker` 与 `/home/lin/a-stock-agent-skills`；后者是 research/monitor/QA 与 runtime 的唯一 canonical carrier。
 
