@@ -1,6 +1,6 @@
 # a-stock-lib
 
-A 股投研三系统（`a-stock-tracker` 评分管道 / `a-stock-research` 新股研究 / `a-stock-monitor` 持仓监控）共享的市场数据 Provider 原语包，从 `a-stock-tracker/lib/` 剥离出来，目标是让三个系统不再各自维护一份行情/基本面抓取逻辑。
+A 股消费者共享的确定性领域与市场数据包。`a-stock-lib` 是跨 consumer 的 shared deterministic logic owner，避免评分、分类、估值和 Provider 语义出现多套实现。
 
 ## 为什么存在
 
@@ -11,6 +11,22 @@ A 股投研三系统（`a-stock-tracker` 评分管道 / `a-stock-research` 新�
 当前已发布版本为 `0.7.0`：增加 A-F 逐项 typed owner contract 与 cache-only 行业映射读取入口。GitHub Release wheel 的 SHA-256 为 `7c4a16d452f34574584531bab6fe9d150f3cb844e5c9b2fe072295f6bb2ee385`；`a-stock-tracker` 与 `a-stock-agent-skills` 均已通过下游 gate，并固定该不可变 Release URL 与摘要。
 
 下游为 `a-stock-tracker` 与 `/home/lin/a-stock-agent-skills`；后者是 research/monitor/QA 与 runtime 的唯一 canonical carrier。
+
+## 职责边界
+
+### Domain
+
+- `FrameworkKey`、`CycleStage`、`SubjectiveAssessment`；
+- A—F threshold / classification 与 framework scoring；
+- 估值纯函数。
+
+### Data
+
+- `MarketDataResult` 与 Provider contracts；
+- TuShare adapters；
+- provenance、freshness 与 cache failure semantics。
+
+本仓库不拥有 holdings、L3、Tier、W1、Skill routing、Agent orchestration 或 SQLite portfolio state；这些 application policy 留在 consumer。
 
 ## 包结构
 
