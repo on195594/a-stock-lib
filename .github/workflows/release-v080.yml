@@ -1,0 +1,32 @@
+name: Publish v0.8.0
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.event.head_commit.message == 'chore(release): Publish v0.8.0'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v0.8.0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install build
+      - run: |
+          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
+          python -m build --wheel
+          sha256sum dist/*.whl
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v0.8.0 dist/*.whl \
+            --verify-tag \
+            --title "a-stock-lib v0.8.0" \
+            --notes "Remove the retired report-regex contract and clarify shared deterministic domain ownership."
