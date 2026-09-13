@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.8.0] — Unreleased
+## [0.8.0] — 2026-09-13
 
 - 删除已无生产调用方的 Markdown report-regex parser；机器状态仅使用结构化 JSON contract。
 - 扩展包定位为跨 consumer 的确定性领域合同、framework scoring、估值和 market-data primitives owner。

@@ -6,9 +6,9 @@ A 股消费者共享的确定性领域与市场数据包。`a-stock-lib` 是跨 
 
 详见设计文档：[`docs/design/2026-06-22-three-system-restructure-design.md`](docs/design/2026-06-22-three-system-restructure-design.md)。核心动机：三系统重复实现行情 Provider、AKShare 行业接口长期不稳定、止损系数差异化依赖脆弱的字符串反推框架。
 
-## 当前状态（2026-09-12）
+## 当前状态（2026-09-13）
 
-当前已发布版本为 `0.7.0`：增加 A-F 逐项 typed owner contract 与 cache-only 行业映射读取入口。GitHub Release wheel 的 SHA-256 为 `7c4a16d452f34574584531bab6fe9d150f3cb844e5c9b2fe072295f6bb2ee385`；`a-stock-tracker` 与 `a-stock-agent-skills` 均已通过下游 gate，并固定该不可变 Release URL 与摘要。`master` 当前准备未发布的 `0.8.0`，不改变消费者 pin。
+当前已发布版本为 `0.8.0`：保留 A-F typed threshold/classification 与 cache-only 行业映射公共合同，并删除已无生产调用方的 legacy report parser。GitHub Release wheel 的 SHA-256 为 `016087ecfea6514af7aabd57c71bbc9dabc00c9b5ec9224d30e8f34ca3dade6e`。
 
 下游为 `a-stock-tracker` 与 `/home/lin/a-stock-agent-skills`；后者是 research/monitor/QA 与 runtime 的唯一 canonical carrier。
 
