@@ -1,6 +1,6 @@
 [project]
 name = "a-stock-lib"
-version = "0.7.0"
+version = "0.8.0"
 description = "Shared deterministic A-share domain contracts, framework scoring, valuation, and market-data provider primitives for a-stock consumers"
 requires-python = ">=3.11"
 dependencies = [
