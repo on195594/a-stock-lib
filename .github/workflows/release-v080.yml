@@ -1,4 +1,4 @@
-name: Publish v0.8.0
+name: Finalize v0.8.0
 
 on:
   push:
@@ -9,24 +9,12 @@ permissions:
 
 jobs:
   release:
-    if: "github.event.head_commit.message == 'fix(release): Retry v0.8.0'"
+    if: "github.event.head_commit.message == 'docs(release): Finalize v0.8.0'"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: v0.8.0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-      - run: python -m pip install build
-      - run: |
-          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
-          python -m build --wheel
-          sha256sum dist/*.whl
       - env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create v0.8.0 dist/*.whl \
-            --verify-tag \
-            --title "a-stock-lib v0.8.0" \
-            --notes "Remove the retired report-regex contract and clarify shared deterministic domain ownership."
+          gh release edit v0.8.0 \
+            --repo "$GITHUB_REPOSITORY" \
+            --notes "Remove the retired report-regex contract and clarify shared deterministic domain ownership. Wheel SHA-256: a811945b23d97eb121ff82d54bc0ba0810000a5379a9e9786fdcdc9220b30310."

@@ -8,7 +8,7 @@ A 股消费者共享的确定性领域与市场数据包。`a-stock-lib` 是跨 
 
 ## 当前状态（2026-09-13）
 
-当前已发布版本为 `0.8.0`：保留 A-F typed threshold/classification 与 cache-only 行业映射公共合同，并删除已无生产调用方的 legacy report parser。GitHub Release wheel 的 SHA-256 为 `016087ecfea6514af7aabd57c71bbc9dabc00c9b5ec9224d30e8f34ca3dade6e`。
+当前已发布版本为 `0.8.0`：保留 A-F typed threshold/classification 与 cache-only 行业映射公共合同，并删除已无生产调用方的 legacy report parser。GitHub Release wheel 的 SHA-256 为 `a811945b23d97eb121ff82d54bc0ba0810000a5379a9e9786fdcdc9220b30310`。
 
 下游为 `a-stock-tracker` 与 `/home/lin/a-stock-agent-skills`；后者是 research/monitor/QA 与 runtime 的唯一 canonical carrier。
 
