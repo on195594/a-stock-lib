@@ -36,12 +36,14 @@ a_stock_lib/
   contracts.py            # 六框架路由、周期与主观证据 typed contract
   framework_scoring.py    # A-F 基本面60分 report-only 纯函数
   valuation.py            # 十年/月末估值分位纯函数
+  fetcher_utils.py        # 送转复权因子计算纯函数
   providers/
     tushare_quotes.py      # 行情主源（需 TUSHARE_TOKEN）
     tushare_common.py      # Token、限流、重试、错误分类和结果 metadata
     tushare_valuation.py   # daily_basic 当前/历史估值
     tushare_financials.py  # 财务指标、三大报表和分红事件
     tushare_fundamentals.py # 行业分类批量拉取 + 本地30天缓存
+    validated_realtime_quotes.py # 实时行情观测、交易时段与时效校验
 ```
 
 ## 安装

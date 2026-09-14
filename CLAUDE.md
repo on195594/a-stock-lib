@@ -33,12 +33,14 @@ python3 -m build           # 产出版本化 wheel（消费方安装这个，不
 | `a_stock_lib/market_data.py` | Provider 协议原语：`MarketDataResult`、错误码常量和 `MarketDataProvider` 协议。纯类型/数据结构，不依赖具体 SDK |
 | `a_stock_lib/contracts.py` | 六框架路由、周期与主观证据 typed contract |
 | `a_stock_lib/framework_scoring.py` | A-F 基本面 60 分 report-only 纯函数及动态规则哈希 |
+| `a_stock_lib/fetcher_utils.py` | 送转复权因子计算纯函数（`detect_split_ratio`），统一跨消费方复权逻辑 |
+| `a_stock_lib/valuation.py` | 十年窗口、月末采样、最少 60 月的估值分位纯函数 |
 | `a_stock_lib/providers/tushare_quotes.py` | 行情主源（需 `TUSHARE_TOKEN`），已完成 Phase 3 token 来源、schema、异常分类硬化 |
 | `a_stock_lib/providers/tushare_fundamentals.py` | 全市场行业分类批量拉取 + 本地 JSON 缓存（30天TTL），全新代码，替代不稳定的 AKShare `stock_individual_info_em` |
 | `a_stock_lib/providers/tushare_common.py` | TuShare Token、进程级限流、typed 网络重试、错误分类、请求指纹与结果 metadata |
 | `a_stock_lib/providers/tushare_valuation.py` | `daily_basic` 全市场单日与单股历史估值 Provider |
 | `a_stock_lib/providers/tushare_financials.py` | 财务指标、三大报表与分红事件 Provider |
-| `a_stock_lib/valuation.py` | 十年窗口、月末采样、最少 60 月的估值分位纯函数 |
+| `a_stock_lib/providers/validated_realtime_quotes.py` | 实时行情观测原语、交易时段划分与 session-aware 120 秒新鲜度校验 |
 
 ---
 

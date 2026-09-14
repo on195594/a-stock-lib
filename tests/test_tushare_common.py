@@ -91,6 +91,8 @@ def test_rate_limiter_rejects_non_positive_limit() -> None:
     [
         (RuntimeError("抱歉，您没有权限访问该接口，权限由积分决定"), PERMISSION_DENIED),
         (RuntimeError("每分钟最多访问该接口180次，访问频次超限"), RATE_LIMITED),
+        (RuntimeError("request rate limit exceeded"), RATE_LIMITED),
+        (RuntimeError("time limit exceeded"), TIMEOUT),
         (TimeoutError("read timed out"), TIMEOUT),
         (ConnectionError("remote disconnected"), REMOTE_DISCONNECTED),
     ],

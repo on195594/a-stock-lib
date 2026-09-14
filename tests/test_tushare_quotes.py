@@ -15,7 +15,6 @@ from a_stock_lib.providers.tushare_quotes import (
     DAILY_SOURCE,
     TRADE_CAL_SOURCE,
     TushareMarketDataProvider,
-    _exception_result,
     _normalize_tushare_bars,
 )
 
@@ -230,16 +229,6 @@ def test_fetch_daily_bars_range_rejects_invalid_range(start_date: str, end_date:
 
     assert result.status == "failed"
     assert result.error_code == INVALID_ARGUMENT
-
-
-def test_tushare_exception_result_classifies_time_limit_as_timeout():
-    result = _exception_result(DAILY_SOURCE, Exception("time limit exceeded"))
-    assert result.error_code == TIMEOUT
-
-
-def test_tushare_exception_result_classifies_rate_limit_without_plain_limit():
-    result = _exception_result(DAILY_SOURCE, Exception("request rate limit exceeded"))
-    assert result.error_code == RATE_LIMITED
 
 
 def test_tushare_retry_call_does_not_retry_permission_limit_errors():

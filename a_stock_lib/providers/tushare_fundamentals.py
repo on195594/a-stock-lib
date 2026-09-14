@@ -25,7 +25,6 @@ from a_stock_lib.providers.tushare_common import (
     DEFAULT_ENV_PATH,
     TushareProviderBase,
     request_fingerprint,
-    read_tushare_token as read_tushare_token,
 )
 
 TUSHARE_FUNDAMENTALS_SOURCE = "tushare.stock_basic"

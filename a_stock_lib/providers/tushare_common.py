@@ -79,10 +79,6 @@ class TushareRateLimiter:
 _GLOBAL_RATE_LIMITER = TushareRateLimiter()
 
 
-def default_tushare_rate_limiter() -> TushareRateLimiter:
-    """Return the process-wide limiter used by real TuShare clients."""
-    return _GLOBAL_RATE_LIMITER
-
 
 def _exception_class_names(exc: Exception) -> set[str]:
     return {cls.__name__ for cls in type(exc).mro()}

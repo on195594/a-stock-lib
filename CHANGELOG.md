@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.8.1] — 2026-09-14
+
+- 清理死代码：删除 `tushare_quotes.py` 未被调用的历史私有 helper `_exception_result` 与 `_now` 别名，将其测试收敛至 `test_tushare_common.py`；删除 `tushare_common.py` 中无外部调用的 `default_tushare_rate_limiter`；删除 `tushare_fundamentals.py` 中未使用的 `read_tushare_token` 重导出。
+- 对齐文档：`README.md` 与 `CLAUDE.md` 补全包结构中遗漏的 `fetcher_utils.py` 与 `validated_realtime_quotes.py`；更新 `docs/TUSHARE_PRIMARY_PROVIDERS.md` 适用版本至 0.8.x。
+
 ## [0.8.0] — 2026-09-13
 
 - 删除已无生产调用方的 Markdown report-regex parser；机器状态仅使用结构化 JSON contract。

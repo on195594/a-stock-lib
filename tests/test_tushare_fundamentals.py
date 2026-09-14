@@ -9,9 +9,9 @@ import pandas as pd
 import pytest
 
 from a_stock_lib.market_data import MISSING_COLUMNS
+from a_stock_lib.providers.tushare_common import read_tushare_token
 from a_stock_lib.providers.tushare_fundamentals import (
     TushareFundamentalsProvider,
-    read_tushare_token,
 )
 
 

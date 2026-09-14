@@ -21,7 +21,6 @@ from a_stock_lib.providers.tushare_common import (
     DEFAULT_ENV_PATH,
     TushareRateLimiter,
     TushareProviderBase,
-    classify_tushare_exception,
     compact_date,
     replace_frame_result,
 )
@@ -220,7 +219,7 @@ def to_tushare_index_code(symbol: str) -> str:
 
 
 def _normalize_tushare_bars(df: Any, source: str, purpose: str) -> MarketDataResult[pd.DataFrame]:
-    fetched_at = _now()
+    fetched_at = now()
     if df is None:
         return MarketDataResult(None, "failed", source, fetched_at, error_code=EMPTY_RESPONSE)
     if not isinstance(df, pd.DataFrame):
@@ -347,7 +346,7 @@ def _invalid_argument(source: str, exc: ValueError) -> MarketDataResult[Any]:
         None,
         "failed",
         source,
-        _now(),
+        now(),
         error_code=INVALID_ARGUMENT,
         error_message=str(exc),
     )
@@ -388,15 +387,6 @@ def _scalar_price_result(
     )
 
 
-def _exception_result(
-    source: str,
-    exc: Exception,
-    token: str | None = None,
-) -> MarketDataResult[pd.DataFrame]:
-    code, message = classify_tushare_exception(exc, token)
-    return MarketDataResult(None, "failed", source, _now(), error_code=code, error_message=message)
-
-
 def _compact(value: str | date) -> str:
     return compact_date(value)
 
@@ -412,6 +402,3 @@ def _parse_date(value: str | date) -> date:
     if "-" in raw[:10]:
         return date.fromisoformat(raw[:10])
     return datetime.strptime(raw[:8], "%Y%m%d").date()
-
-
-_now = now
