@@ -1,6 +1,6 @@
 # a-stock-lib repository rules
 
-This repository owns deterministic A-share domain logic and market-data Provider primitives shared by `a-stock-tracker` and `a-stock-agent-skills`. A rule belongs here only when it is deterministic and shared by multiple consumers; application-only policy remains in the consumer. Current code and tests are authoritative. Read `README.md` for the current package surface, the relevant document under `docs/design/` for architecture decisions, and `docs/RELEASE_CHECKLIST.md` only for release work.
+This repository owns deterministic A-share domain logic and market-data Provider primitives shared by `a-stock-tracker` and `a-stock-agent-skills`. A rule belongs here only when it is deterministic and shared by multiple consumers; application-only policy remains in the consumer. Current code and tests are authoritative. Read `README.md` for ownership and the current package surface, the relevant provider contract only when changing it, and `docs/RELEASE_CHECKLIST.md` only for release work. Completed migration plans are recoverable from Git, not prerequisites for development.
 
 ## Boundaries
 

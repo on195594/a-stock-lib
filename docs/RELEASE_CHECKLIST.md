@@ -9,7 +9,7 @@
 3. tracker：固定 `tushare==1.4.29` 与 `a-stock-lib==X.Y.Z`，安装新 wheel 后运行全量测试；不得恢复 BaoStock 依赖或 fallback。
 4. agent-skills：以显式 `--a-stock-lib-source` 或 `--a-stock-lib-wheel` 运行 installer，确认生成的 `a-stock-lib-install.json` 记录版本、source commit 与 wheel hash，再运行全量测试。
 5. 从随机 cwd 分别核对两个运行环境的 `importlib.metadata.version("a-stock-lib")` 和 `a_stock_lib.__file__`，防止误用源码工作目录掩盖安装漂移。
-6. 同步本仓 `README.md`、`AGENTS.md`、`CLAUDE.md` 与两个下游的当前状态文档；历史 CHANGELOG/spec 不改写时点事实。
+6. 只更新发生变化的公共 API 文档、CHANGELOG 和实际发版消费方的锁文件/部署记录；不在 AGENTS/CLAUDE/README 多处复制版本和生产状态。历史 CHANGELOG/spec 不改写时点事实。
 7. 复查三仓 diff。修改 tracker 或 agent-skills 的生产配置、cron、数据库或部署状态仍需独立授权。
 
 ## 验收锚点

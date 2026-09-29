@@ -1,82 +1,44 @@
 # a-stock-lib
 
-A 股消费者共享的确定性领域与市场数据包。`a-stock-lib` 是跨 consumer 的 shared deterministic logic owner，避免评分、分类、估值和 Provider 语义出现多套实现。
+A 股共享的确定性计算与数据 Provider。只维护有真实消费者的公共语义，不承载产品流程或 Agent 调度。
 
-## 为什么存在
+## 项目分工
 
-详见设计文档：[`docs/design/2026-06-22-three-system-restructure-design.md`](docs/design/2026-06-22-three-system-restructure-design.md)。核心动机：三系统重复实现行情 Provider、AKShare 行业接口长期不稳定、止损系数差异化依赖脆弱的字符串反推框架。
+- **a-stock-lib**：行情/财务 Provider、来源与时效、A—F typed contract、基本面评分、估值与送转计算。
+- **a-stock-agent-skills**：首次研究、持仓监控、文本 QA；持仓、风险与写入授权归其 runtime。
+- **a-stock-tracker**：通用 TuShare 数据链和历史审计；Framework A 已结案，不恢复评分实验。
+- **a-stock-screen**：同业发现、个人研究记录与事实变化；独立工作台，不承担持仓或交易。
 
-## 当前状态（2026-09-13）
+保留独立包和版本锁定；不为统一目录而合并数据库、发布或产品边界。只有共享且确定性的逻辑进入本包。
 
-当前已发布版本为 `0.8.0`：保留 A-F typed threshold/classification 与 cache-only 行业映射公共合同，并删除已无生产调用方的 legacy report parser。GitHub Release wheel 的 SHA-256 为 `a811945b23d97eb121ff82d54bc0ba0810000a5379a9e9786fdcdc9220b30310`。
+## 公共表面
 
-下游为 `a-stock-tracker` 与 `/home/lin/a-stock-agent-skills`；后者是 research/monitor/QA 与 runtime 的唯一 canonical carrier。
+| 模块 | 职责 |
+|---|---|
+| `market_data.py` | `MarketDataResult`、Provider 协议、错误码 |
+| `contracts.py` | 框架、周期、主观证据 typed contract |
+| `framework_scoring.py` | A—F 基本面 60 分 report-only 纯函数、规则哈希 |
+| `valuation.py` / `fetcher_utils.py` | 估值分位、送转复权 |
+| `providers/` | TuShare adapters、行业缓存、实时行情时效校验 |
 
-## 职责边界
+来源、时间、缺失、降级和 fallback 必须可追溯；Provider 错误结构化，缓存原子写入，SDK 懒加载且可注入。评分不完整或被阻断时不得用于投资动作；本包不做择时、仓位、状态写入或收益承诺。
 
-### Domain
-
-- `FrameworkKey`、`CycleStage`、`SubjectiveAssessment`；
-- A—F threshold / classification 与 framework scoring；
-- 估值纯函数。
-
-### Data
-
-- `MarketDataResult` 与 Provider contracts；
-- TuShare adapters；
-- provenance、freshness 与 cache failure semantics。
-
-本仓库不拥有 holdings、L3、Tier、W1、Skill routing、Agent orchestration 或 SQLite portfolio state；这些 application policy 留在 consumer。
-
-## 包结构
-
-```
-a_stock_lib/
-  market_data.py          # MarketDataResult / MarketDataProvider / 错误码常量
-  contracts.py            # 六框架路由、周期与主观证据 typed contract
-  framework_scoring.py    # A-F 基本面60分 report-only 纯函数
-  valuation.py            # 十年/月末估值分位纯函数
-  fetcher_utils.py        # 送转复权因子计算纯函数
-  providers/
-    tushare_quotes.py      # 行情主源（需 TUSHARE_TOKEN）
-    tushare_common.py      # Token、限流、重试、错误分类和结果 metadata
-    tushare_valuation.py   # daily_basic 当前/历史估值
-    tushare_financials.py  # 财务指标、三大报表和分红事件
-    tushare_fundamentals.py # 行业分类批量拉取 + 本地30天缓存
-    validated_realtime_quotes.py # 实时行情观测、交易时段与时效校验
-```
-
-## 安装
-
-开发模式（本仓库内迭代用）：
+## 开发与发布
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+python3 -m venv .venv
+.venv/bin/pip install -e '.[dev]'
+.venv/bin/python -m pytest tests -q
+git diff --check
 ```
 
-消费方安装（版本锁定，不用 `-e` 软链接——见设计文档 6.1 节）：
+TuShare 为可选依赖：`pip install -e '.[tushare]'`。消费者使用版本化 wheel，不使用源码软链接。源码版本以 `pyproject.toml` 和 `a_stock_lib/__init__.py` 为准；部署版本以各消费者的锁文件和部署记录为准，不能由源码版本推断。
 
-```bash
-python3 -m build                       # 产出 dist/a_stock_lib-<version>-py3-none-any.whl
-pip install /path/to/a_stock_lib-<version>-py3-none-any.whl
-```
+- [开发约束](AGENTS.md)
+- [Provider 字段与数据语义](docs/TUSHARE_PRIMARY_PROVIDERS.md)
+- [发版与消费方验证](docs/RELEASE_CHECKLIST.md)
+- [变更历史](CHANGELOG.md)；`docs/specs/` 保留合同依据，`docs/reviews/` 保留审查证据。
 
-按需安装 TuShare 依赖：`pip install -e ".[tushare]"`。
+## 历史恢复
 
-TuShare 生产主源 API 与字段口径见 [`docs/TUSHARE_PRIMARY_PROVIDERS.md`](docs/TUSHARE_PRIMARY_PROVIDERS.md)。
-
-## 六框架评分（report-only）
-
-`a_stock_lib.framework_scoring.score_fundamentals()` 接受已结构化的客观指标、`SubjectiveAssessment` 和可选周期阶段，返回每个维度得分、60 分机械小计、缺失输入和红线。`complete=false` 或 `blocked=true` 的结果不得用于投资动作；本模块不写数据库、不计算择时/仓位，也未接入生产 tracker。
-
-## 测试
-
-```bash
-source .venv/bin/activate
-pytest tests/ -v
-```
-
-## 开发流程
-
-本仓库按 PM/codex/agy 三方协作流水线开发，细节见 [`CLAUDE.md`](CLAUDE.md)（Claude Code 专用）/ [`AGENTS.md`](AGENTS.md)（codex/agy 等通用 agent CLI 自动读取）。
+已完成的 2026-06/07 迁移设计、四份计划和 `HANDOFF.md` 不再作为开发入口，内容由 Git 历史保存。清理前快照：`6dc856ea1183fe6f6c8ff9f5201b0c920b5008ec`；例如 `git show 6dc856ea:HANDOFF.md`。历史日志中的旧路径按同样方式恢复，不重新执行旧安装、cron 或多 Agent 流程。
