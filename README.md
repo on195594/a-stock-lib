@@ -42,3 +42,5 @@ TuShare 为可选依赖：`pip install -e '.[tushare]'`。消费者使用版本�
 ## 历史恢复
 
 已完成的 2026-06/07 迁移设计、四份计划和 `HANDOFF.md` 不再作为开发入口，内容由 Git 历史保存。清理前快照：`6dc856ea1183fe6f6c8ff9f5201b0c920b5008ec`；例如 `git show 6dc856ea:HANDOFF.md`。历史日志中的旧路径按同样方式恢复，不重新执行旧安装、cron 或多 Agent 流程。
+
+旧 `.claude/ai-collab/` 配置/流水线状态和已退休文本 parser 的容错 Spec 也移出活动树；删除前快照为 `d2f62b554fdcceda0f15eee89df3f2e66ce8198a`。当前只保留 typed contract，不恢复旧标签 parser 或客户端专属治理入口。
