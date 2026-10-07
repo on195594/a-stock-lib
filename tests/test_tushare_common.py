@@ -20,6 +20,37 @@ from a_stock_lib.providers.tushare_common import (
     classify_tushare_exception,
     compact_date,
 )
+from a_stock_lib.providers import (
+    TushareDividendProvider,
+    TushareFinancialProvider,
+    TushareFundamentalsProvider,
+    TushareMarketDataProvider,
+    TushareProviderBase,
+    TushareValuationProvider,
+)
+
+
+@pytest.mark.parametrize(
+    "provider_type",
+    [
+        TushareProviderBase,
+        TushareMarketDataProvider,
+        TushareFundamentalsProvider,
+        TushareFinancialProvider,
+        TushareDividendProvider,
+        TushareValuationProvider,
+    ],
+)
+def test_provider_does_not_discover_another_projects_credentials(monkeypatch, provider_type):
+    monkeypatch.setattr(
+        "a_stock_lib.providers.tushare_common.read_tushare_token",
+        lambda path: pytest.fail("credential files require an explicit env_path"),
+    )
+    assert provider_type().token is None
+    monkeypatch.setenv("TUSHARE_TOKEN", "environment-token")
+    assert provider_type().token == "environment-token"
+    assert provider_type(token="explicit-token").token == "explicit-token"
+    assert provider_type(token="").token == ""
 
 
 class _FakeClock:

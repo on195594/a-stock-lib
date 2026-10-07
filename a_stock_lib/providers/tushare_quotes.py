@@ -18,7 +18,6 @@ from a_stock_lib.market_data import (
     now,
 )
 from a_stock_lib.providers.tushare_common import (
-    DEFAULT_ENV_PATH,
     TushareRateLimiter,
     TushareProviderBase,
     compact_date,
@@ -39,7 +38,7 @@ class TushareMarketDataProvider(TushareProviderBase):
         token: str | None = None,
         client: Any | None = None,
         client_factory: Callable[[str], Any] | None = None,
-        env_path: Path = DEFAULT_ENV_PATH,
+        env_path: Path | None = None,
         rate_limiter: TushareRateLimiter | None = None,
     ) -> None:
         super().__init__(

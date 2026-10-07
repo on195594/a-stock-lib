@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.8.2] — 2026-10-07
+
+- Provider 不再隐式读取其他项目的 `.env`；凭据仅使用显式 token、环境变量或显式 `env_path`，空 token 继续禁用认证。
+- 增加各 Provider 凭据边界回归，更新实际消费者与 wheel 发布验收说明；不改变评分、估值或交易规则。
+
 ## [0.8.1] — 2026-09-14
 
 - 清理死代码：删除 `tushare_quotes.py` 未被调用的历史私有 helper `_exception_result` 与 `_now` 别名，将其测试收敛至 `test_tushare_common.py`；删除 `tushare_common.py` 中无外部调用的 `default_tushare_rate_limiter`；删除 `tushare_fundamentals.py` 中未使用的 `read_tushare_token` 重导出。

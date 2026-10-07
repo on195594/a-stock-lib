@@ -1,6 +1,6 @@
 # a-stock-lib repository rules
 
-This repository owns deterministic A-share domain logic and market-data Provider primitives shared by `a-stock-tracker` and `a-stock-agent-skills`. A rule belongs here only when it is deterministic and shared by multiple consumers; application-only policy remains in the consumer. Current code and tests are authoritative. Read `README.md` for ownership and the current package surface, the relevant provider contract only when changing it, and `docs/RELEASE_CHECKLIST.md` only for release work. Completed migration plans are recoverable from Git, not prerequisites for development.
+This repository owns reusable deterministic A-share domain logic and market-data Provider primitives. Its current direct consumer is `a-stock-agent-skills`; `a-stock-tracker` no longer depends on this package. Keep existing consumed APIs here, but do not extract new application-only policy or add consumers merely to justify sharing. Current code and tests are authoritative. Read `README.md` for ownership and the current package surface, the relevant provider contract only when changing it, and `docs/RELEASE_CHECKLIST.md` only for release work. Completed migration plans are recoverable from Git, not prerequisites for development.
 
 ## Boundaries
 
@@ -15,4 +15,4 @@ This repository owns deterministic A-share domain logic and market-data Provider
 
 Use the commands declared by `README.md` and `pyproject.toml`. Run the affected tests during development, then the proportionate repository checks and `git diff --check` before handoff. Release and downstream-consumer validation belong to `docs/RELEASE_CHECKLIST.md`, not every code change.
 Ensure `pyproject.toml` preserves `[tool.pytest.ini_options] pythonpath = ["."]` so test invocations consistently prioritize current workspace code over virtualenv-installed wheels.
-When authorized to update downstream projects, execute all verification gates defined in `docs/RELEASE_CHECKLIST.md` across `a-stock-tracker` and `a-stock-agent-skills`, including verifying version metadata from an independent cwd outside the source trees.
+When authorized to update downstream projects, execute the verification gates in `docs/RELEASE_CHECKLIST.md` for actual consumers, including verifying version metadata from an independent cwd outside the source trees.

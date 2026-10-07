@@ -1,16 +1,12 @@
 # TuShare 生产主源 Provider API
 
-适用代码版本：`a-stock-lib==0.8.0`。不可变 GitHub Release wheel 已发布并完成下游校验；生产消费者固定该 Release URL 与 SHA-256。
+本文描述当前源码合同；源码版本以 `pyproject.toml` 为准。生产消费者的已发布版本以各自锁文件和部署记录为准，源码修复不代表已发布或激活。
 
 ## 安装
 
-本地候选验证应安装本提交构建并校验过哈希的 wheel；生产安装必须使用已发布的不可变 Release wheel 及固定 SHA-256：
+本地候选验证应安装本提交构建并校验过哈希的 wheel；生产安装必须使用已发布的不可变 Release wheel 及固定 SHA-256，流程见 [发版清单](RELEASE_CHECKLIST.md)。
 
-```bash
-pip install ./dist/a_stock_lib-0.8.0-py3-none-any.whl
-```
-
-本版本固定 `tushare==1.4.29`。Token 优先级：构造参数 → `TUSHARE_TOKEN` → 显式 `env_path` 指向的文件。禁止在代码中硬编码 Token。
+本版本固定 `tushare==1.4.29`。Token 优先级：构造参数 → `TUSHARE_TOKEN` → 显式 `env_path` 指向的文件。默认不搜索相邻项目或主目录下的 `.env`；未配置时返回 `AUTH_MISSING`，显式空 Token 仍表示禁用。旧调用若依赖隐式文件发现，须改为环境变量或显式路径。禁止在代码中硬编码 Token。
 
 ## 行情与行业
 
@@ -66,7 +62,7 @@ result = compute_valuation_percentile(
 - 每月使用最后一个有效交易日；
 - 仅使用有限正数；
 - 至少 60 个有效月；
-- 使用与 tracker 兼容的严格小于公式：`count(history < current) / N * 100`；
+- 使用严格小于公式：`count(history < current) / N * 100`；
 - `coverage_status` 为 `FULL_10Y`、`SINCE_LISTING` 或 `INSUFFICIENT_HISTORY`。
 - `window_start/window_end` 是实际纳入计算的首末观察日，不伪装成请求 as-of date。
 

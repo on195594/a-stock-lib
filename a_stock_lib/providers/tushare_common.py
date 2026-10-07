@@ -31,10 +31,8 @@ Clock = Callable[[], float]
 Sleeper = Callable[[float], None]
 ClientFactory = Callable[[str], Any]
 
-DEFAULT_ENV_PATH = Path.home() / "a-stock-tracker" / ".env"
 
-
-def read_tushare_token(env_path: Path = DEFAULT_ENV_PATH) -> str | None:
+def read_tushare_token(env_path: Path) -> str | None:
     """Read TUSHARE_TOKEN from an explicit dotenv-style file."""
     if not env_path.is_file():
         return None
@@ -192,10 +190,12 @@ class TushareProviderBase:
         token: str | None = None,
         client: Any | None = None,
         client_factory: ClientFactory | None = None,
-        env_path: Path = DEFAULT_ENV_PATH,
+        env_path: Path | None = None,
         rate_limiter: TushareRateLimiter | None = None,
     ) -> None:
-        self.token = token if token is not None else os.environ.get("TUSHARE_TOKEN") or read_tushare_token(env_path)
+        self.token = token if token is not None else os.environ.get("TUSHARE_TOKEN") or (
+            read_tushare_token(env_path) if env_path is not None else None
+        )
         self._client = client
         self._client_factory = client_factory
         self._rate_limiter = rate_limiter or (_GLOBAL_RATE_LIMITER if client is None else TushareRateLimiter(10**9))

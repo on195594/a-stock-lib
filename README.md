@@ -6,10 +6,9 @@ A 股共享的确定性计算与数据 Provider。只维护有真实消费者的
 
 - **a-stock-lib**：行情/财务 Provider、来源与时效、A—F typed contract、基本面评分、估值与送转计算。
 - **a-stock-agent-skills**：首次研究、持仓监控、文本 QA；持仓、风险与写入授权归其 runtime。
-- **a-stock-tracker**：通用 TuShare 数据链和历史审计；Framework A 已结案，不恢复评分实验。
-- **a-stock-screen**：同业发现、个人研究记录与事实变化；独立工作台，不承担持仓或交易。
+- **a-stock-tracker**：同业发现、个人研究记录、事实变化与隔离的机器研究；已合并原 screen，当前不直接依赖本包，不承担持仓或交易。Framework A 已结案，不恢复评分实验。
 
-保留独立包和版本锁定；不为统一目录而合并数据库、发布或产品边界。只有共享且确定性的逻辑进入本包。
+保留独立包和版本锁定；当前直接消费者是 agent-skills runtime。按真实调用维护公共语义，不为“共享”向 Tracker 重新添加依赖，也不合并数据库、发布或产品边界。
 
 ## 公共表面
 

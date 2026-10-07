@@ -22,7 +22,6 @@ from a_stock_lib.market_data import (
     now,
 )
 from a_stock_lib.providers.tushare_common import (
-    DEFAULT_ENV_PATH,
     TushareProviderBase,
     request_fingerprint,
 )
@@ -45,7 +44,7 @@ class TushareFundamentalsProvider(TushareProviderBase):
         cache_path: Path = DEFAULT_CACHE_PATH,
         ttl_seconds: int = DEFAULT_TTL_SECONDS,
         client: Any | None = None,
-        env_path: Path = DEFAULT_ENV_PATH,
+        env_path: Path | None = None,
     ) -> None:
         super().__init__(token=token, client=client, env_path=env_path)
         self.cache_path = Path(cache_path)
