@@ -1,6 +1,6 @@
 # 发版清单
 
-适用于 `a-stock-lib` 版本变更。当前直接消费者是 `a-stock-agent-skills` runtime；research/monitor/QA 不再单独安装本包。Tracker 已合并 screen 且不再依赖本包，不为本包发版重新添加该依赖。
+适用于 `a-stock-lib` 版本变更。当前直接消费者是 `a-stock-agent-skills` runtime；research/monitor/QA 不再单独安装本包。Tracker 当前不依赖本包；只有在其新数据需求由本包实现并引入依赖后，才把它列为发版消费者。
 
 ## 步骤
 

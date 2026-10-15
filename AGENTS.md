@@ -1,6 +1,6 @@
 # a-stock-lib repository rules
 
-This repository owns reusable deterministic A-share domain logic and market-data Provider primitives. Its current direct consumer is `a-stock-agent-skills`; `a-stock-tracker` no longer depends on this package. Keep existing consumed APIs here, but do not extract new application-only policy or add consumers merely to justify sharing. Current code and tests are authoritative. Read `README.md` for ownership and the current package surface, the relevant provider contract only when changing it, and `docs/RELEASE_CHECKLIST.md` only for release work. Completed migration plans are recoverable from Git, not prerequisites for development.
+This repository owns reusable deterministic A-share domain logic and market-data Provider primitives. Its current direct consumer is `a-stock-agent-skills`; `a-stock-tracker` does not currently depend on this package. Per the 2026-10-15 ownership decision, new Tracker market/financial data needs are implemented here, and Tracker becomes a consumer only when such a need is real. Keep existing consumed APIs here, but do not extract new application-only policy or add consumers merely to justify sharing. Current code and tests are authoritative. Read `README.md` for ownership and the current package surface, the relevant provider contract only when changing it, and `docs/RELEASE_CHECKLIST.md` only for release work. Completed migration plans are recoverable from Git, not prerequisites for development.
 
 ## Boundaries
 
