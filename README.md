@@ -6,9 +6,13 @@ A 股共享的确定性计算与数据 Provider。只维护有真实消费者的
 
 - **a-stock-lib**：行情/财务 Provider、来源与时效、A—F typed contract、基本面评分、估值与送转计算。
 - **a-stock-agent-skills**：首次研究、持仓监控、文本 QA；持仓、风险与写入授权归其 runtime。
-- **a-stock-tracker**：引用核验型财报研究引擎与阅读界面（初筛、单家公司财报研究、价格纪律参考），计划经本机 MCP 向 Agent/Skill 提供已复核报告与原文引文；当前不直接依赖本包，不承担持仓或交易。Framework A 已结案，不恢复评分实验。
+- **a-share-research**：引用核验型财报研究应用、历史报告与价格参考；直接消费本包的财务和估值 Provider，不承担持仓或账户写入。
 
-保留独立包和版本锁定；当前直接消费者是 agent-skills runtime。按真实调用维护公共语义。2026-10-15 起 Tracker 不再扩展自有行情/财务采集，新的数据需求在本包实现后由 Tracker 按需引入依赖；不为“共享”迁移其现有采集代码，也不合并数据库、发布或产品边界。
+保留独立包和版本锁定；当前直接消费者是上述两个应用。各自独立存储与发布，公共接口变更按实际影响验证两方。Research 优先复用现有 Provider，缺少的接口按其项目约束直接调用 TuShare；出现真实复用需求后再评估公共能力，不为共享搬迁应用代码。
+
+三项目的[项目契约](https://github.com/on195594/a-share-research/blob/main/docs/project-contract.md)、[路线图](https://github.com/on195594/a-share-research/blob/main/docs/roadmap.md)和[实施计划](https://github.com/on195594/a-share-research/blob/main/docs/implementation-plan.md)统一维护在 `a-share-research/docs/`。报告只读复用仍为规划项，Lib 不承载其接口、研究流程或 Agent 调度。
+
+`a-stock-tracker` 已停止，其未来消费和 MCP 接入计划已取消，只保留历史参考。历史 Tracker Framework A 已结案；本包现有 A—F 计算合同继续维护。
 
 ## 公共表面
 
