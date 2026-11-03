@@ -7,7 +7,7 @@
 - 移除无消费者的 Tracker 遗留公共 API：`market_data.MarketDataProvider` 协议、`fetch_l3_bars`、`INSUFFICIENT_WINDOW`、`SOURCE_DISABLED`、`valuation.py` 十年月度分位和 `fetch_daily_basic_by_trade_date`。保留实际消费的历史估值与实时行情校验接口；Research 应用的五年分位/截面口径不变。
 - 增加指数、最近收盘价、日线与日历成功路径及失败边界测试，扩充三张财务报表和历史估值回归。
 - 收敛重复测试：凭据读取由 `test_tushare_common.py` 统一覆盖，标量价格非法日期用例收敛；删除 Tracker 时期的 `docs/reviews/`。
-- 验证：Lib 204 passed，CI 通过；Skills 1639 passed / 9 skipped（分阶段完成版本与正式安装门禁），Research 832 passed / 11 skipped。两个隔离消费环境正常锁同步后从独立 cwd 核对 0.9.0/site-packages 路径及发布 wheel 文件内容。真实 TuShare 的 `H00300.CSI` / `H00922.CSI` 均成功，600900 周末收盘价明确降级至 2026-10-30。无生产或活动客户端切换。
+- 验证：Lib 204 passed，CI 通过；Skills 合入远端独立股息敏感性变更后全量 1641 passed / 9 skipped（含版本与正式安装门禁），Research 832 passed / 11 skipped。两个隔离消费环境正常锁同步后从独立 cwd 核对 0.9.0/site-packages 路径及发布 wheel 文件内容。真实 TuShare 的 `H00300.CSI` / `H00922.CSI` 均成功，600900 周末收盘价明确降级至 2026-10-30。无生产或活动客户端切换。
 - 发布 wheel SHA256：`4c470038479856767cd686b0c71abe160b8cc5b39dec65fc9d8d2e68ccaf74a9`；源提交 `b278e7b`。
 
 ## [0.8.2] — 2026-10-07
