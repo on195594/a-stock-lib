@@ -9,6 +9,8 @@
 - 明确公共表面：`market_data` 与 `providers` 声明 `__all__`，`providers` 导出 `to_tushare_stock_code` / `to_tushare_index_code`，新增 `py.typed`。移除无消费者的 `fetch_daily_bars_range` 与 `MarketSession` / `market_session` 导出。
 - 收敛重复实现：`parse_date`、`invalid_argument_result`、`schema_failure_result` 统一在 `tushare_common`；`TushareFundamentalsProvider` 支持 `client_factory` / `rate_limiter`。
 - `requires-python` 提升到 `>=3.13`，与 CI 及两个消费者一致。
+- 验证：Lib 211 passed，CI 通过。隔离环境候选验证：Research 832 passed / 11 skipped；Skills 除安装门禁外 1635 passed / 9 skipped，安装门禁因 Skills 固定期望 0.9.0 失败，需随 Skills 升级同步更新。真实 TuShare 收盘价（周末降级至 2026-10-30）、`H00300.CSI`、估值、财务、分红均成功。两个消费者锁文件仍为 0.9.0，无生产或活动客户端切换。
+- 发布 wheel SHA256：`e69dd873a57b5bc38f989650dad751e319554fd90190a07b0135854431164470`；源提交 `bd55597`。
 
 ## [0.9.0] — 2026-11-03
 
