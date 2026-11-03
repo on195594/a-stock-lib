@@ -59,21 +59,6 @@ def test_fetch_industry_map_without_token_fails(tmp_path, monkeypatch):
     assert result.error_code == "AUTH_MISSING"
 
 
-def test_fetch_industry_map_reads_token_from_env_var(tmp_path, monkeypatch):
-    monkeypatch.setenv("TUSHARE_TOKEN", "env-token-123")
-    provider = TushareFundamentalsProvider(
-        token=None,
-        cache_path=tmp_path / "cache.json",
-        env_path=tmp_path / "missing.env",
-        client=_FakeProClient(_sample_df()),
-    )
-
-    result = provider.fetch_industry_map()
-
-    assert provider.token == "env-token-123"
-    assert result.status == "ok"
-
-
 def test_fetch_industry_map_reads_token_from_custom_env_path(tmp_path, monkeypatch):
     monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
     env_path = tmp_path / ".env"

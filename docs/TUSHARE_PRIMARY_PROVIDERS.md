@@ -14,13 +14,24 @@
 
 `TushareFundamentalsProvider.fetch_industry_map()` 的远端与缓存命中结果都返回缓存年龄、确定性请求指纹和映射行数。行业接口没有官方业务日期，因此 `source_as_of` 保持 `None`；抓取时点只由 `fetched_at` 表示，不伪装成财报期或交易日。
 
+## 行情价格合同（0.9.0）
+
+- `fetch_index_bars(symbol, start_date, end_date)`：闭区间请求，支持 `.SH` / `.SZ` / `.CSI`（包括 `H00300.CSI`、`H00922.CSI`）；只返回升序的 `date/close` 指数点位，不捏造 OHLC、成交量或复权含义。非法代码/日期返回 `INVALID_ARGUMENT`，缺列、非正/非有限点位、重复日期、区间外数据均 fail-closed。`source_as_of` 是实际最后观察日，`freshness_days` 相对请求截止日。
+- `fetch_close_price(code, target_date)`：查询 `[target_date - 10 天, target_date]`，返回最近有效收盘价。当天为 `ok`，之前交易日为 `degraded` + `NEAREST_AVAILABLE_PRICE`；保留实际日期、天数、来源、请求指纹。长停牌超过窗口或无行情返回失败，不无限回溯。
+- `fetch_daily_bars_range` 保留 OHLC/成交量与区间校验；`fetch_trade_calendar` 返回交易日期表，不将计划交易日标作行情观察日。
+
+### 0.8.2 → 0.9.0 迁移
+
+删除无实际消费者的 `MarketDataProvider` 协议、`fetch_l3_bars`、`INSUFFICIENT_WINDOW`、`SOURCE_DISABLED`。旧 `fetch_score_price` / `fetch_outcome_price` 合并为 `fetch_close_price`；`fetch_index_bars` 必须显式提供起止日期。
+
+退役无实际消费者的 `valuation.py` 十年月度分位算法和 `fetch_daily_basic_by_trade_date` 全市场截面接口及其专属测试。Research 的五年 PE 分位、选股/回测截面仍由该应用维护，不强制迁移不同语义。两个应用在用的 `fetch_valuation_history` 不变。`MarketSession` / `market_session` 被实时行情校验内部使用，继续保留。
+
 ## 估值
 
 ```python
 from a_stock_lib.providers import TushareValuationProvider
 
 provider = TushareValuationProvider()
-daily = provider.fetch_daily_basic_by_trade_date("2026-07-17")
 history = provider.fetch_valuation_history(
     "603606",
     "2016-07-18",
@@ -43,28 +54,6 @@ dv_ratio, dv_ttm, total_mv, circ_mv
 - 亏损公司的 `pe/pe_ttm` 为空是合法业务状态。
 
 官方文档：[每日指标数据](https://tushare.pro/document/2?doc_id=32)。
-
-## 估值分位
-
-```python
-from a_stock_lib.valuation import compute_valuation_percentile
-
-result = compute_valuation_percentile(
-    history.value,
-    field="pb",
-    as_of_date="2026-07-17",
-)
-```
-
-规则：
-
-- 截取 as-of date 向前最多十年；
-- 每月使用最后一个有效交易日；
-- 仅使用有限正数；
-- 至少 60 个有效月；
-- 使用严格小于公式：`count(history < current) / N * 100`；
-- `coverage_status` 为 `FULL_10Y`、`SINCE_LISTING` 或 `INSUFFICIENT_HISTORY`。
-- `window_start/window_end` 是实际纳入计算的首末观察日，不伪装成请求 as-of date。
 
 ## 财务
 

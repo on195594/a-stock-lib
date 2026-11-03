@@ -4,7 +4,7 @@ A 股共享的确定性计算与数据 Provider。只维护有真实消费者的
 
 ## 项目分工
 
-- **a-stock-lib**：行情/财务 Provider、来源与时效、A—F typed contract、基本面评分、估值与送转计算。
+- **a-stock-lib**：行情/财务 Provider、来源与时效、A—F typed contract、基本面评分、历史估值数据与送转计算。
 - **a-stock-agent-skills**：首次研究、持仓监控、文本 QA；持仓、风险与写入授权归其 runtime。
 - **a-share-research**：引用核验型财报研究应用、历史报告与价格参考；直接消费本包的财务和估值 Provider，不承担持仓或账户写入。
 
@@ -18,10 +18,10 @@ A 股共享的确定性计算与数据 Provider。只维护有真实消费者的
 
 | 模块 | 职责 |
 |---|---|
-| `market_data.py` | `MarketDataResult`、Provider 协议、错误码 |
+| `market_data.py` | `MarketDataResult`、状态与错误码 |
 | `contracts.py` | 框架、周期、主观证据 typed contract |
 | `framework_scoring.py` | A—F 基本面 60 分 report-only 纯函数、规则哈希 |
-| `valuation.py` / `fetcher_utils.py` | 估值分位、送转复权 |
+| `fetcher_utils.py` | 送转复权 |
 | `providers/` | TuShare adapters、行业缓存、实时行情时效校验 |
 
 来源、时间、缺失、降级和 fallback 必须可追溯；Provider 错误结构化，缓存原子写入，SDK 懒加载且可注入。评分不完整或被阻断时不得用于投资动作；本包不做择时、仓位、状态写入或收益承诺。
@@ -40,10 +40,10 @@ TuShare 为可选依赖：`pip install -e '.[tushare]'`。消费者使用版本�
 - [开发约束](AGENTS.md)
 - [Provider 字段与数据语义](docs/TUSHARE_PRIMARY_PROVIDERS.md)
 - [发版与消费方验证](docs/RELEASE_CHECKLIST.md)
-- [变更历史](CHANGELOG.md)；`docs/specs/` 保留合同依据，`docs/reviews/` 保留审查证据。
+- [变更历史](CHANGELOG.md)；`docs/specs/` 保留合同依据。
 
 ## 历史恢复
 
 已完成的 2026-06/07 迁移设计、四份计划和 `HANDOFF.md` 不再作为开发入口，内容由 Git 历史保存。清理前快照：`6dc856ea1183fe6f6c8ff9f5201b0c920b5008ec`；例如 `git show 6dc856ea:HANDOFF.md`。历史日志中的旧路径按同样方式恢复，不重新执行旧安装、cron 或多 Agent 流程。
 
-旧 `.claude/ai-collab/` 配置/流水线状态和已退休文本 parser 的容错 Spec 也移出活动树；删除前快照为 `d2f62b554fdcceda0f15eee89df3f2e66ce8198a`。当前只保留 typed contract，不恢复旧标签 parser 或客户端专属治理入口。
+旧 `.claude/ai-collab/` 配置/流水线状态和已退休文本 parser 的容错 Spec 也移出活动树；删除前快照为 `d2f62b554fdcceda0f15eee89df3f2e66ce8198a`。当前只保留 typed contract，不恢复旧标签 parser 或客户端专属治理入口。Tracker 时期的 `docs/reviews/` 审查记录和无消费者的 `MarketDataProvider` 协议、`fetch_l3_bars` 在 0.9.0 移出，删除前快照为 `acabb35`。

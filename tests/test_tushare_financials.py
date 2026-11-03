@@ -147,16 +147,29 @@ def test_statement_history_preserves_point_in_time_keys(
     assert row["report_type"] == "1"
     assert row["comp_type"] == "2"
     assert row["update_flag"] == "1"
+    assert result.row_count == 1
+    assert result.request_fingerprint
+    assert result.fetched_at
+    numeric = {"income": "n_income_attr_p", "balancesheet": "total_assets", "cashflow": "n_cashflow_act"}[endpoint]
+    assert row[numeric] == "148000000000"  # statement payloads retain source units/types
+    assert client.calls[0][0] == endpoint
+    assert client.calls[0][1]["start_date"] == "20250101"
+    assert client.calls[0][1]["end_date"] == "20260720"
 
 
-def test_statement_history_fails_when_report_type_is_missing() -> None:
+@pytest.mark.parametrize(("method", "endpoint"), [
+    ("fetch_income_history", "income"),
+    ("fetch_balance_history", "balancesheet"),
+    ("fetch_cashflow_history", "cashflow"),
+])
+def test_statement_history_fails_when_report_type_is_missing(method, endpoint) -> None:
     frames = _frames()
-    frames["income"] = frames["income"].drop(columns="report_type")
+    frames[endpoint] = frames[endpoint].drop(columns="report_type")
     provider = TushareFinancialProvider(
         token="fake-token", client=_FakeFinancialClient(frames)
     )
 
-    result = provider.fetch_income_history("600036")
+    result = getattr(provider, method)("600036")
 
     assert result.status == "failed"
     assert result.error_code == MISSING_COLUMNS

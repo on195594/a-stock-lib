@@ -6,10 +6,8 @@ import pytest
 from a_stock_lib.market_data import (
     INVALID_ARGUMENT,
     MISSING_COLUMNS,
-    RATE_LIMITED,
     SCHEMA_CHANGED,
     SOURCE_STALE,
-    TIMEOUT,
 )
 from a_stock_lib.providers.tushare_quotes import (
     DAILY_SOURCE,
@@ -33,28 +31,6 @@ class _DailyClient:
 
     def daily(self, **kwargs):
         return self._value
-
-
-def test_tushare_provider_constructs_without_token(tmp_path, monkeypatch):
-    monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
-    provider = TushareMarketDataProvider(token=None, env_path=tmp_path / "missing.env")
-    assert provider.token is None
-
-
-def test_tushare_provider_reads_token_from_env(monkeypatch):
-    monkeypatch.setenv("TUSHARE_TOKEN", "fake-token-123")
-    provider = TushareMarketDataProvider()
-    assert provider.token == "fake-token-123"
-
-
-def test_tushare_provider_reads_token_from_env_file_when_env_missing(tmp_path, monkeypatch):
-    monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
-    env_path = tmp_path / ".env"
-    env_path.write_text("TUSHARE_TOKEN=file-token-456\n")
-
-    provider = TushareMarketDataProvider(env_path=env_path)
-
-    assert provider.token == "file-token-456"
 
 
 def test_tushare_stock_code_supports_beijing_exchange() -> None:
@@ -106,7 +82,7 @@ def test_tushare_normalizer_rejects_invalid_prices(bad_close: float):
     assert result.error_code == SCHEMA_CHANGED
 
 
-def test_fetch_score_price_rejects_future_observation():
+def test_fetch_close_price_rejects_future_observation():
     provider = TushareMarketDataProvider(
         token="fake-token",
         client=_DailyClient(
@@ -123,7 +99,7 @@ def test_fetch_score_price_rejects_future_observation():
         ),
     )
 
-    result = provider.fetch_score_price("600036", "2026-06-23")
+    result = provider.fetch_close_price("600036", "2026-06-23")
 
     assert result.status == "failed"
     assert result.error_code == SOURCE_STALE
@@ -172,7 +148,7 @@ def test_tushare_normalizer_rejects_inconsistent_ohlc():
     assert result.error_code == SCHEMA_CHANGED
 
 
-def test_fetch_score_price_rejects_malformed_source_date():
+def test_fetch_close_price_rejects_malformed_source_date():
     provider = TushareMarketDataProvider(
         token="fake-token",
         client=_DailyClient(
@@ -189,30 +165,7 @@ def test_fetch_score_price_rejects_malformed_source_date():
         ),
     )
 
-    result = provider.fetch_score_price("600036", "2026-06-23")
-
-    assert result.status == "failed"
-    assert result.error_code == SCHEMA_CHANGED
-
-
-def test_fetch_l3_bars_rejects_malformed_source_date():
-    provider = TushareMarketDataProvider(
-        token="fake-token",
-        client=_DailyClient(
-            pd.DataFrame(
-                {
-                    "trade_date": ["2026-06-0x"],
-                    "open": [10.0],
-                    "high": [11.0],
-                    "low": [9.0],
-                    "close": [10.5],
-                    "vol": [100.0],
-                }
-            )
-        ),
-    )
-
-    result = provider.fetch_l3_bars("600036", "2026-06-23", 1)
+    result = provider.fetch_close_price("600036", "2026-06-23")
 
     assert result.status == "failed"
     assert result.error_code == SCHEMA_CHANGED
@@ -256,34 +209,16 @@ def test_tushare_trade_calendar_non_dataframe_fails_schema_changed():
     assert result.error_code == SCHEMA_CHANGED
 
 
-def test_fetch_score_price_rejects_malformed_date():
+def test_scalar_price_rejects_malformed_date():
     provider = TushareMarketDataProvider(token="fake-token")
-    result = provider.fetch_score_price("600036", "not-a-date")
+    result = provider.fetch_close_price("600036", "not-a-date")
     assert result.status == "failed"
     assert result.error_code == INVALID_ARGUMENT
     assert result.value is None
     assert result.error_message is not None
 
 
-def test_fetch_l3_bars_rejects_malformed_date():
-    provider = TushareMarketDataProvider(token="fake-token")
-    result = provider.fetch_l3_bars("600036", "not-a-date", 60)
-    assert result.status == "failed"
-    assert result.error_code == INVALID_ARGUMENT
-    assert result.value is None
-    assert result.error_message is not None
-
-
-def test_fetch_outcome_price_rejects_malformed_date():
-    provider = TushareMarketDataProvider(token="fake-token")
-    result = provider.fetch_outcome_price("600036", "not-a-date")
-    assert result.status == "failed"
-    assert result.error_code == INVALID_ARGUMENT
-    assert result.value is None
-    assert result.error_message is not None
-
-
-def test_fetch_score_price_preserves_complete_request_metadata():
+def test_fetch_close_price_preserves_complete_request_metadata():
     provider = TushareMarketDataProvider(
         token="fake-token",
         client=_DailyClient(
@@ -300,7 +235,7 @@ def test_fetch_score_price_preserves_complete_request_metadata():
         ),
     )
 
-    result = provider.fetch_score_price("600036", "2026-06-23")
+    result = provider.fetch_close_price("600036", "2026-06-23")
 
     assert result.status == "ok"
     assert result.value == 10.5

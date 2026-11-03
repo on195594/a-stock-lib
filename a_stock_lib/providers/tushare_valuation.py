@@ -29,20 +29,7 @@ VALUATION_NUMERIC_COLUMNS = tuple(column for column in VALUATION_COLUMNS if colu
 
 
 class TushareValuationProvider(TushareProviderBase):
-    """TuShare daily_basic provider for current and historical valuations."""
-
-    def fetch_daily_basic_by_trade_date(
-        self,
-        trade_date: str,
-        code: str | None = None,
-    ) -> MarketDataResult[pd.DataFrame]:
-        try:
-            params: dict[str, Any] = {"trade_date": compact_date(trade_date), "fields": VALUATION_FIELDS}
-            if code:
-                params["ts_code"] = to_tushare_stock_code(code)
-        except ValueError as exc:
-            return _invalid_argument(exc)
-        return self._fetch(params)
+    """TuShare daily_basic provider for per-stock historical valuations."""
 
     def fetch_valuation_history(
         self,

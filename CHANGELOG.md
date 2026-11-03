@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.0] — 2026-11-03
+
+- 修复 `fetch_index_bars(symbol, start_date, end_date)`：支持 `.CSI` 全收益指数，返回有限正数的 `date/close`，不要求全收益指数提供 OHLC/成交量；校验范围、重复日期并保留来源与时效。
+- `fetch_score_price` / `fetch_outcome_price` 合并为 `fetch_close_price`，保留十天窗口、最近有效交易日与显式降级语义。Skills 基准报告改用本包并展示价格实际日期。
+- 移除无消费者的 Tracker 遗留公共 API：`market_data.MarketDataProvider` 协议、`fetch_l3_bars`、`INSUFFICIENT_WINDOW`、`SOURCE_DISABLED`、`valuation.py` 十年月度分位和 `fetch_daily_basic_by_trade_date`。保留实际消费的历史估值与实时行情校验接口；Research 应用的五年分位/截面口径不变。
+- 增加指数、最近收盘价、日线与日历成功路径及失败边界测试，扩充三张财务报表和历史估值回归。
+- 收敛重复测试：凭据读取由 `test_tushare_common.py` 统一覆盖，标量价格非法日期用例参数化；删除 Tracker 时期的 `docs/reviews/`。
+
 ## [0.8.2] — 2026-10-07
 
 - Provider 不再隐式读取其他项目的 `.env`；凭据仅使用显式 token、环境变量或显式 `env_path`，空 token 继续禁用认证。

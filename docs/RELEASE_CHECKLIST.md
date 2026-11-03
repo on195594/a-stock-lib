@@ -2,7 +2,7 @@
 
 适用于 `a-stock-lib` 版本变更。当前直接消费者是 `a-stock-agent-skills` runtime 和 `a-share-research` 应用。Skills 中的 research/monitor/QA 不单独安装本包；独立应用 `a-share-research` 有自己的依赖与运行环境。Tracker 已停止，不列入消费者。
 
-消费者职责见[项目契约](https://github.com/on195594/a-share-research/blob/main/docs/project-contract.md)。本文只维护实际发版验证，不要求日常文档修改安装或升级消费者。
+消费者职责见[项目契约](https://github.com/on195594/a-share-research/blob/main/docs/project-contract.md)，后续公共能力是否需要变更以[实施计划](https://github.com/on195594/a-share-research/blob/main/docs/implementation-plan.md#下一批推进顺序)中的实际根因为准。本文只维护实际发版验证；日常文档、测试和缓存整理不触发发版或消费者升级，按受影响范围验证即可。
 
 ## 步骤
 
