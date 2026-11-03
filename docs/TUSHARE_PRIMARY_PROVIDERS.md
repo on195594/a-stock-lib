@@ -22,17 +22,25 @@
 
 `validate_quote_observation(observation, now, trading_dates)` 是无 I/O 纯函数：校验 `QuoteObservation` 的正有限价格、来源与日期时间，并按上海时区判定交易时段。`now` 必须带时区；盘中要求报价为当日且年龄不超过 `max_intraday_age_seconds`（默认 120 秒，容忍 30 秒时钟超前），盘前要求上一交易日，非交易时段要求最近交易日。合法返回 `None`，否则返回原因字符串。交易日历由调用方提供（例如 `fetch_trade_calendar`）。
 
-## 行情价格合同（0.9.0）
+## 行情价格合同
 
 - `fetch_index_bars(symbol, start_date, end_date)`：闭区间请求，支持 `.SH` / `.SZ` / `.CSI`（包括 `H00300.CSI`、`H00922.CSI`）；只返回升序的 `date/close` 指数点位，不捏造 OHLC、成交量或复权含义。非法代码/日期返回 `INVALID_ARGUMENT`，缺列、非正/非有限点位、重复日期、区间外数据均 fail-closed。`source_as_of` 是实际最后观察日，`freshness_days` 相对请求截止日。
 - `fetch_close_price(code, target_date)`：查询 `[target_date - 10 天, target_date]`，返回最近有效收盘价。当天为 `ok`，之前交易日为 `degraded` + `NEAREST_AVAILABLE_PRICE`；保留实际日期、天数、来源、请求指纹。长停牌超过窗口或无行情返回失败，不无限回溯。
-- `fetch_daily_bars_range` 保留 OHLC/成交量与区间校验；`fetch_trade_calendar` 返回交易日期表，不将计划交易日标作行情观察日。
+- `fetch_trade_calendar` 返回 SSE 交易日期表，不将计划交易日标作行情观察日。
+- `to_tushare_stock_code` / `to_tushare_index_code` 是公开的代码规范化函数。
+
+### 0.9.0 → 0.10.0 迁移
+
+- 稳定公共表面以 `a_stock_lib.providers.__all__` 与 `a_stock_lib.market_data.__all__` 为准，包内附带 `py.typed`。`to_tushare_stock_code` / `to_tushare_index_code` 可直接从 `a_stock_lib.providers` 导入。
+- 移除无消费者的 `fetch_daily_bars_range`；`MarketSession` / `market_session` 不再导出（后者改为私有）。
+- `MarketDataResult.fetched_at` 改为带 `+08:00` 偏移的上海时间 ISO 字符串；比较时请用带时区的 `datetime`。
+- `TushareFundamentalsProvider` 与其他 Provider 一样接受 `client_factory` 与 `rate_limiter`。
 
 ### 0.8.2 → 0.9.0 迁移
 
 删除无实际消费者的 `MarketDataProvider` 协议、`fetch_l3_bars`、`INSUFFICIENT_WINDOW`、`SOURCE_DISABLED`。旧 `fetch_score_price` / `fetch_outcome_price` 合并为 `fetch_close_price`；`fetch_index_bars` 必须显式提供起止日期。
 
-退役无实际消费者的 `valuation.py` 十年月度分位算法和 `fetch_daily_basic_by_trade_date` 全市场截面接口及其专属测试。Research 的五年 PE 分位、选股/回测截面仍由该应用维护，不强制迁移不同语义。两个应用在用的 `fetch_valuation_history` 不变。`MarketSession` / `market_session` 被实时行情校验内部使用，继续保留。
+退役无实际消费者的 `valuation.py` 十年月度分位算法和 `fetch_daily_basic_by_trade_date` 全市场截面接口及其专属测试。Research 的五年 PE 分位、选股/回测截面仍由该应用维护，不强制迁移不同语义。两个应用在用的 `fetch_valuation_history` 不变。
 
 ## 估值
 
@@ -116,6 +124,10 @@ result = provider.fetch_dividend_history("600036")
 - `cash_div_tax`：每股分红，税前。
 
 官方文档：[分红送股](https://tushare.pro/document/2?doc_id=103)。
+
+## 送转
+
+`a_stock_lib.fetcher_utils.detect_split_ratio(df, latest_report_year, *, as_of=None)` 计算报告期后、`as_of`（默认上海当日）及之前已实施送转的累计摊薄系数。需要可复现结果时请显式传 `as_of`。同时接受 AKShare `stock_fhps_detail_em` 列（每 10 股）与 `TushareDividendProvider` 原生列（`stk_bo_rate + stk_co_rate`，缺失时 `stk_div`，每股；`div_proc == "实施"`）。
 
 ## 限流、重试和错误
 

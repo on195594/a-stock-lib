@@ -32,11 +32,35 @@ def test_providers_package_exports() -> None:
         "TushareDividendProvider",
         "TushareProviderBase",
         "TushareRateLimiter",
-        "MarketSession",
         "QuoteObservation",
         "validate_quote_observation",
-        "market_session",
+        "to_tushare_index_code",
+        "to_tushare_stock_code",
     ]
+    assert sorted(providers.__all__) == sorted(expected_exports)
     for name in expected_exports:
         assert hasattr(providers, name), f"providers package missing export: {name}"
-    assert set(expected_exports).issubset(set(providers.__all__))
+
+
+def test_market_data_exports_every_error_code() -> None:
+    from typing import get_args
+
+    from a_stock_lib import market_data
+
+    codes = set(get_args(market_data.MarketDataErrorCode))
+    assert codes <= set(market_data.__all__)
+    assert all(getattr(market_data, code) == code for code in codes)
+
+
+def test_package_ships_py_typed_marker() -> None:
+    assert (Path(a_stock_lib.__file__).parent / "py.typed").is_file()
+
+
+def test_now_is_timezone_aware_shanghai() -> None:
+    from datetime import datetime, timedelta
+
+    from a_stock_lib.market_data import now, shanghai_today
+
+    parsed = datetime.fromisoformat(now())
+    assert parsed.utcoffset() == timedelta(hours=8)
+    assert shanghai_today() in {parsed.date(), parsed.date() + timedelta(days=1)}

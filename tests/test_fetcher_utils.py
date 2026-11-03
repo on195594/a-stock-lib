@@ -112,3 +112,37 @@ def test_detect_split_ratio_multiple_splits_cumulative():
     ratio, ex = detect_split_ratio(df, 2024)
     assert abs(ratio - 0.44) < 1e-5, f"累计送转应为 0.44，实际 {ratio}"
     assert ex == "2025-06-20"  # 取最新除权日
+
+
+# ---------------------------------------------------------------------------
+# 显式 as_of 与 TuShare 原生字段
+# ---------------------------------------------------------------------------
+
+
+def test_detect_split_ratio_explicit_as_of_is_reproducible():
+    df = _make_fhps_df(["2025-06-01", "2025-09-01"], [10.0, 5.0], ["实施分配", "实施分配"])
+    assert detect_split_ratio(df, 2024, as_of="2025-07-01") == (1.0, "2025-06-01")
+    assert detect_split_ratio(df, 2024, as_of=date(2025, 9, 1)) == (2.0, "2025-09-01")
+    assert detect_split_ratio(df, 2024, as_of="20250531") == (0.0, None)
+
+
+def test_detect_split_ratio_accepts_tushare_per_share_columns():
+    df = pd.DataFrame(
+        {
+            "ex_date": ["2025-06-01", "2025-09-01", "2025-10-01", "2026-01-01"],
+            "div_proc": ["实施", "实施", "预案", "实施"],
+            "stk_div": [0.0, 0.5, 1.0, 1.0],
+            "stk_bo_rate": [0.3, None, None, None],
+            "stk_co_rate": [0.2, None, None, None],
+        }
+    )
+    # bonus+conversion 0.5 (per share) then stk_div fallback 0.5; 预案 and future rows excluded
+    assert detect_split_ratio(df, 2024, as_of="2025-12-31") == (1.25, "2025-09-01")
+
+
+def test_detect_split_ratio_tushare_and_akshare_agree():
+    tushare = pd.DataFrame({"ex_date": ["2025-06-01"], "div_proc": ["实施"], "stk_div": [0.2]})
+    akshare = _make_fhps_df(["2025-06-01"], [2.0], ["实施分配"])
+    assert detect_split_ratio(tushare, 2024, as_of="2025-12-31") == detect_split_ratio(
+        akshare, 2024, as_of="2025-12-31"
+    )

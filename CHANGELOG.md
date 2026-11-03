@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.10.0] — Unreleased
+
+- `framework_rule_hash` 改为 `RULE_VERSION` + 阈值表 + 主观项的规范化 JSON SHA-256，不再依赖源码文本或字节码；哈希值因此变化（规则语义未变）。新增按框架固定的哈希与跨六框架行为快照测试，评分行为变化而未升 `RULE_VERSION` 时 CI 失败。移除 `clear_rule_hash_cache` 与 `framework_rule_hash.cache_clear`。
+- 修复 `score_fundamentals().missing_inputs` 中主观项顺序随进程哈希随机变化的问题，现按类别值排序。
+- `detect_split_ratio` 增加关键字参数 `as_of`（默认上海当日），并直接接受 TuShare `dividend` 原生字段；AKShare 字段行为不变。
+- `market_data.now()` 返回带 `+08:00` 的上海时间；新增 `SHANGHAI_TZ`、`shanghai_today()`。实时行情校验复用同一时区常量。
+- 明确公共表面：`market_data` 与 `providers` 声明 `__all__`，`providers` 导出 `to_tushare_stock_code` / `to_tushare_index_code`，新增 `py.typed`。移除无消费者的 `fetch_daily_bars_range` 与 `MarketSession` / `market_session` 导出。
+- 收敛重复实现：`parse_date`、`invalid_argument_result`、`schema_failure_result` 统一在 `tushare_common`；`TushareFundamentalsProvider` 支持 `client_factory` / `rate_limiter`。
+- `requires-python` 提升到 `>=3.13`，与 CI 及两个消费者一致。
+
 ## [0.9.0] — 2026-11-03
 
 - 修复 `fetch_index_bars(symbol, start_date, end_date)`：支持 `.CSI` 全收益指数，返回有限正数的 `date/close`，不要求全收益指数提供 OHLC/成交量；校验范围、重复日期并保留来源与时效。

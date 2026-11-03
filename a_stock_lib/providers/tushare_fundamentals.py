@@ -22,7 +22,9 @@ from a_stock_lib.market_data import (
     now,
 )
 from a_stock_lib.providers.tushare_common import (
+    ClientFactory,
     TushareProviderBase,
+    TushareRateLimiter,
     request_fingerprint,
 )
 
@@ -45,8 +47,16 @@ class TushareFundamentalsProvider(TushareProviderBase):
         ttl_seconds: int = DEFAULT_TTL_SECONDS,
         client: Any | None = None,
         env_path: Path | None = None,
+        client_factory: ClientFactory | None = None,
+        rate_limiter: TushareRateLimiter | None = None,
     ) -> None:
-        super().__init__(token=token, client=client, env_path=env_path)
+        super().__init__(
+            token=token,
+            client=client,
+            client_factory=client_factory,
+            env_path=env_path,
+            rate_limiter=rate_limiter,
+        )
         self.cache_path = Path(cache_path)
         self.ttl_seconds = ttl_seconds
 

@@ -1,19 +1,17 @@
-"""Concrete provider implementations and realtime quote composition."""
+"""Stable provider surface consumed by a-stock applications.
 
-from .validated_realtime_quotes import (
-    MarketSession,
-    QuoteObservation,
-    market_session,
-    validate_quote_observation,
-)
+Names listed in ``__all__`` are the supported public API. Other module-level
+helpers in ``a_stock_lib.providers.*`` are implementation details.
+"""
+
+from .validated_realtime_quotes import QuoteObservation, validate_quote_observation
 from .tushare_common import TushareProviderBase, TushareRateLimiter
 from .tushare_financials import TushareDividendProvider, TushareFinancialProvider
 from .tushare_fundamentals import TushareFundamentalsProvider
-from .tushare_quotes import TushareMarketDataProvider
+from .tushare_quotes import TushareMarketDataProvider, to_tushare_index_code, to_tushare_stock_code
 from .tushare_valuation import TushareValuationProvider
 
 __all__ = [
-    "MarketSession",
     "QuoteObservation",
     "TushareDividendProvider",
     "TushareFinancialProvider",
@@ -22,6 +20,7 @@ __all__ = [
     "TushareProviderBase",
     "TushareRateLimiter",
     "TushareValuationProvider",
-    "market_session",
+    "to_tushare_index_code",
+    "to_tushare_stock_code",
     "validate_quote_observation",
 ]

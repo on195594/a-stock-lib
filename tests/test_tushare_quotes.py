@@ -106,28 +106,6 @@ def test_fetch_close_price_rejects_future_observation():
     assert result.value is None
 
 
-def test_fetch_daily_bars_range_rejects_observation_after_end_date():
-    provider = TushareMarketDataProvider(
-        token="fake-token",
-        client=_DailyClient(
-            pd.DataFrame(
-                {
-                    "trade_date": ["20260624"],
-                    "open": [10.0],
-                    "high": [11.0],
-                    "low": [9.0],
-                    "close": [10.5],
-                    "vol": [100.0],
-                }
-            )
-        ),
-    )
-
-    result = provider.fetch_daily_bars_range("600036", "2026-06-01", "2026-06-23")
-
-    assert result.status == "failed"
-    assert result.error_code == SOURCE_STALE
-
 
 def test_tushare_normalizer_rejects_inconsistent_ohlc():
     result = _normalize_tushare_bars(
@@ -169,19 +147,6 @@ def test_fetch_close_price_rejects_malformed_source_date():
 
     assert result.status == "failed"
     assert result.error_code == SCHEMA_CHANGED
-
-
-@pytest.mark.parametrize(
-    ("start_date", "end_date"),
-    [("not-a-date", "2026-06-23"), ("2026-06-24", "2026-06-23")],
-)
-def test_fetch_daily_bars_range_rejects_invalid_range(start_date: str, end_date: str):
-    provider = TushareMarketDataProvider(token="fake-token")
-
-    result = provider.fetch_daily_bars_range("600036", start_date, end_date)
-
-    assert result.status == "failed"
-    assert result.error_code == INVALID_ARGUMENT
 
 
 def test_tushare_retry_call_does_not_retry_permission_limit_errors():
@@ -243,3 +208,16 @@ def test_fetch_close_price_preserves_complete_request_metadata():
     assert result.source_as_of == "2026-06-23"
     assert result.request_fingerprint
     assert result.row_count == 1
+
+
+@pytest.mark.parametrize(
+    ("start_date", "end_date"),
+    [("not-a-date", "2026-06-23"), ("2026-06-24", "2026-06-23")],
+)
+def test_fetch_index_bars_rejects_invalid_range(start_date: str, end_date: str):
+    provider = TushareMarketDataProvider(token="fake-token")
+
+    result = provider.fetch_index_bars("000300", start_date, end_date)
+
+    assert result.status == "failed"
+    assert result.error_code == INVALID_ARGUMENT

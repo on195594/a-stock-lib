@@ -20,9 +20,9 @@ A 股共享的确定性计算与数据 Provider。只维护有真实消费者的
 |---|---|
 | `market_data.py` | `MarketDataResult`、状态与错误码 |
 | `contracts.py` | 框架、周期、主观证据 typed contract |
-| `framework_scoring.py` | A—F 基本面 60 分 report-only 纯函数、规则哈希 |
-| `fetcher_utils.py` | 送转复权 |
-| `providers/` | TuShare adapters、行业缓存、实时行情时效校验 |
+| `framework_scoring.py` | A—F 基本面 60 分 report-only 纯函数；规则哈希为 `RULE_VERSION` + 阈值表的规范化 JSON 摘要，行为快照测试防止未升版的规则漂移 |
+| `fetcher_utils.py` | 送转复权（显式 `as_of`，兼容 TuShare/AKShare 字段） |
+| `providers/` | TuShare adapters、行业缓存、实时行情时效校验；稳定导出见 `providers.__all__` |
 
 来源、时间、缺失、降级和 fallback 必须可追溯；Provider 错误结构化，缓存原子写入，SDK 懒加载且可注入。评分不完整或被阻断时不得用于投资动作；本包不做择时、仓位、状态写入或收益承诺。
 

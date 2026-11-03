@@ -4,18 +4,15 @@ from typing import Any
 
 import pandas as pd
 
-from a_stock_lib.market_data import (
-    INVALID_ARGUMENT,
-    SCHEMA_CHANGED,
-    MarketDataResult,
-    now,
-)
+from a_stock_lib.market_data import MarketDataResult
 from a_stock_lib.providers.tushare_common import (
     TushareProviderBase,
     compact_date,
+    invalid_argument_result,
     normalize_date_columns,
     normalize_numeric_columns,
     replace_frame_result,
+    schema_failure_result,
 )
 from a_stock_lib.providers.tushare_quotes import to_tushare_stock_code
 
@@ -49,7 +46,7 @@ class TushareValuationProvider(TushareProviderBase):
                 "fields": VALUATION_FIELDS,
             }
         except ValueError as exc:
-            return _invalid_argument(exc)
+            return invalid_argument_result(DAILY_BASIC_SOURCE, exc)
         return self._fetch(params)
 
     def _fetch(self, params: dict[str, Any]) -> MarketDataResult[pd.DataFrame]:
@@ -66,25 +63,6 @@ class TushareValuationProvider(TushareProviderBase):
             normalized = normalize_numeric_columns(normalized, VALUATION_NUMERIC_COLUMNS)
             normalized = normalized.sort_values(["trade_date", "ts_code"]).reset_index(drop=True)
         except Exception as exc:
-            return MarketDataResult(
-                None,
-                "failed",
-                DAILY_BASIC_SOURCE,
-                now(),
-                error_code=SCHEMA_CHANGED,
-                error_message=str(exc),
-                request_fingerprint=result.request_fingerprint,
-            )
+            return schema_failure_result(result, exc)
         source_as_of = str(normalized["trade_date"].max())
         return replace_frame_result(result, normalized, source_as_of)
-
-
-def _invalid_argument(exc: ValueError) -> MarketDataResult[pd.DataFrame]:
-    return MarketDataResult(
-        None,
-        "failed",
-        DAILY_BASIC_SOURCE,
-        now(),
-        error_code=INVALID_ARGUMENT,
-        error_message=str(exc),
-    )

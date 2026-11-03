@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date, datetime, time, timezone
 from enum import Enum
 from typing import Sequence
+
+from a_stock_lib.market_data import SHANGHAI_TZ
+
+__all__ = ["QuoteObservation", "validate_quote_observation"]
 
 
 @dataclass(frozen=True)
@@ -58,8 +62,8 @@ def validate_quote_observation(
     except (TypeError, ValueError):
         return "invalid quote date/time"
 
-    now_shanghai = _ensure_aware_utc(now).astimezone(timezone(timedelta(hours=8)))
-    session, expected_date = market_session(now_shanghai, trading_dates)
+    now_shanghai = _ensure_aware_utc(now).astimezone(SHANGHAI_TZ)
+    session, expected_date = _market_session(now_shanghai, trading_dates)
     if quote_date != expected_date:
         return f"stale trade date: expected {expected_date.isoformat()}, got {quote_date.isoformat()}"
     if session is not MarketSession.INTRADAY:
@@ -72,7 +76,7 @@ def validate_quote_observation(
     return None
 
 
-def market_session(
+def _market_session(
     now_shanghai: datetime, trading_dates: Sequence[date]
 ) -> tuple[MarketSession, date]:
     """Return session and the trade date a valid observation must represent."""

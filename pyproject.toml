@@ -1,8 +1,8 @@
 [project]
 name = "a-stock-lib"
-version = "0.9.0"
+version = "0.10.0"
 description = "Shared deterministic A-share domain contracts, framework scoring, valuation, and market-data provider primitives for a-stock consumers"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = [
     "pandas",
 ]
@@ -18,6 +18,9 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["a_stock_lib*"]
+
+[tool.setuptools.package-data]
+a_stock_lib = ["py.typed"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

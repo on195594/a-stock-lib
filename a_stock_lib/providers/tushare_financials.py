@@ -2,18 +2,15 @@ from __future__ import annotations
 
 import pandas as pd
 
-from a_stock_lib.market_data import (
-    INVALID_ARGUMENT,
-    SCHEMA_CHANGED,
-    MarketDataResult,
-    now,
-)
+from a_stock_lib.market_data import MarketDataResult
 from a_stock_lib.providers.tushare_common import (
     TushareProviderBase,
     compact_date,
+    invalid_argument_result,
     normalize_date_columns,
     normalize_numeric_columns,
     replace_frame_result,
+    schema_failure_result,
 )
 from a_stock_lib.providers.tushare_quotes import to_tushare_stock_code
 
@@ -158,7 +155,7 @@ class TushareFinancialProvider(TushareProviderBase):
             if endpoint == "fina_indicator":
                 params["fields"] = FINA_INDICATOR_FIELDS
         except ValueError as exc:
-            return _invalid_argument(source, exc)
+            return invalid_argument_result(source, exc)
         result = self._request_frame(source, endpoint, params, required_columns)
         if result.value is None:
             return result
@@ -172,7 +169,7 @@ class TushareDividendProvider(TushareProviderBase):
         try:
             params = {"ts_code": to_tushare_stock_code(code)}
         except ValueError as exc:
-            return _invalid_argument(DIVIDEND_SOURCE, exc)
+            return invalid_argument_result(DIVIDEND_SOURCE, exc)
         result = self._request_frame(
             DIVIDEND_SOURCE,
             "dividend",
@@ -219,7 +216,7 @@ def _normalize_financial_result(
             ["end_date", "ann_date"], na_position="last"
         ).reset_index(drop=True)
     except Exception as exc:
-        return _schema_failure(result, exc)
+        return schema_failure_result(result, exc)
     source_as_of = _financial_source_as_of(normalized, endpoint)
     return replace_frame_result(result, normalized, source_as_of)
 
@@ -235,7 +232,7 @@ def _normalize_dividend_result(
             ["end_date", "ann_date"], na_position="last"
         ).reset_index(drop=True)
     except Exception as exc:
-        return _schema_failure(result, exc)
+        return schema_failure_result(result, exc)
     source_as_of = _coalesced_maximum_date(normalized, "imp_ann_date", "ann_date")
     return replace_frame_result(result, normalized, source_as_of)
 
@@ -267,29 +264,3 @@ def _maximum_date(frame: pd.DataFrame, column: str) -> str | None:
         return None
     values = frame[column].dropna()
     return str(values.max()) if not values.empty else None
-
-
-def _schema_failure(
-    result: MarketDataResult[pd.DataFrame],
-    exc: Exception,
-) -> MarketDataResult[pd.DataFrame]:
-    return MarketDataResult(
-        None,
-        "failed",
-        result.source,
-        now(),
-        error_code=SCHEMA_CHANGED,
-        error_message=str(exc),
-        request_fingerprint=result.request_fingerprint,
-    )
-
-
-def _invalid_argument(source: str, exc: ValueError) -> MarketDataResult[pd.DataFrame]:
-    return MarketDataResult(
-        None,
-        "failed",
-        source,
-        now(),
-        error_code=INVALID_ARGUMENT,
-        error_message=str(exc),
-    )

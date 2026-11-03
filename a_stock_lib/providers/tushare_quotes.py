@@ -3,14 +3,12 @@ from __future__ import annotations
 import math
 from dataclasses import replace
 from datetime import date, datetime, timedelta
-from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import pandas as pd
 
 from a_stock_lib.market_data import (
     EMPTY_RESPONSE,
-    INVALID_ARGUMENT,
     MISSING_COLUMNS,
     SCHEMA_CHANGED,
     SOURCE_STALE,
@@ -18,10 +16,12 @@ from a_stock_lib.market_data import (
     now,
 )
 from a_stock_lib.providers.tushare_common import (
-    TushareRateLimiter,
     TushareProviderBase,
     compact_date,
+    invalid_argument_result,
+    parse_date,
     replace_frame_result,
+    schema_failure_result,
 )
 
 DAILY_SOURCE = "tushare.daily"
@@ -33,58 +33,32 @@ TUSHARE_VOLUME_UNIT = "hand"
 class TushareMarketDataProvider(TushareProviderBase):
     """Tushare Pro implementation of the market-data provider boundary."""
 
-    def __init__(
-        self,
-        token: str | None = None,
-        client: Any | None = None,
-        client_factory: Callable[[str], Any] | None = None,
-        env_path: Path | None = None,
-        rate_limiter: TushareRateLimiter | None = None,
-    ) -> None:
-        super().__init__(
-            token=token,
-            client=client,
-            client_factory=client_factory,
-            env_path=env_path,
-            rate_limiter=rate_limiter,
-        )
-
     def fetch_close_price(self, code: str, target_date: str) -> MarketDataResult[float]:
         """Close on or before target_date, within the preceding 10 calendar days."""
         try:
-            target = _parse_date(target_date)
+            target = parse_date(target_date)
             start = target - timedelta(days=10)
         except (ValueError, OverflowError) as exc:
-            return _invalid_argument(DAILY_SOURCE, exc)
-        result = self._fetch_daily(code, _compact(start), _compact(target), "close_price")
+            return invalid_argument_result(DAILY_SOURCE, exc)
+        result = self._fetch_daily(code, compact_date(start), compact_date(target), "close_price")
         if result.value is None or result.value.empty:
             return _scalar_failure(result, DAILY_SOURCE)
         return _scalar_price_result(result, target)
-
-    def fetch_daily_bars_range(self, code: str, start_date: str, end_date: str) -> MarketDataResult[pd.DataFrame]:
-        try:
-            start = _parse_date(start_date)
-            end = _parse_date(end_date)
-            if start > end:
-                raise ValueError("start_date must not be after end_date")
-        except ValueError as exc:
-            return _invalid_argument(DAILY_SOURCE, exc)
-        return self._fetch_daily(code, _compact(start), _compact(end), "daily_bars")
 
     def fetch_index_bars(self, symbol: str, start_date: str, end_date: str) -> MarketDataResult[pd.DataFrame]:
         """Index closing points only; total-return indices need not have OHLC/volume."""
         try:
             ts_code = to_tushare_index_code(symbol)
-            start = _parse_date(start_date)
-            end = _parse_date(end_date)
+            start = parse_date(start_date)
+            end = parse_date(end_date)
             if start > end:
                 raise ValueError("start_date must not be after end_date")
         except ValueError as exc:
-            return _invalid_argument(INDEX_DAILY_SOURCE, exc)
+            return invalid_argument_result(INDEX_DAILY_SOURCE, exc)
         result = self._request_frame(
             INDEX_DAILY_SOURCE,
             "index_daily",
-            {"ts_code": ts_code, "start_date": _compact(start), "end_date": _compact(end),
+            {"ts_code": ts_code, "start_date": compact_date(start), "end_date": compact_date(end),
              "fields": "trade_date,close"},
             {"trade_date", "close"},
         )
@@ -93,20 +67,20 @@ class TushareMarketDataProvider(TushareProviderBase):
 
     def fetch_trade_calendar(self, start_date: str, end_date: str) -> MarketDataResult[pd.DataFrame]:
         try:
-            start = _parse_date(start_date)
-            end = _parse_date(end_date)
+            start = parse_date(start_date)
+            end = parse_date(end_date)
             if start > end:
                 raise ValueError("start_date must not be after end_date")
         except ValueError as exc:
-            return _invalid_argument(TRADE_CAL_SOURCE, exc)
+            return invalid_argument_result(TRADE_CAL_SOURCE, exc)
         result = self._request_frame(
             TRADE_CAL_SOURCE,
             "trade_cal",
             {
                 "exchange": "SSE",
                 "is_open": "1",
-                "start_date": _compact(start),
-                "end_date": _compact(end),
+                "start_date": compact_date(start),
+                "end_date": compact_date(end),
                 "fields": "cal_date",
             },
             {"cal_date"},
@@ -115,17 +89,17 @@ class TushareMarketDataProvider(TushareProviderBase):
             return result
         try:
             normalized = result.value[["cal_date"]].rename(columns={"cal_date": "date"}).copy()
-            normalized["date"] = normalized["date"].map(_format_tushare_date)
+            normalized["date"] = normalized["date"].map(_iso_date)
             normalized = normalized.sort_values("date").reset_index(drop=True)
         except Exception as exc:
-            return _schema_failure(result, exc)
+            return schema_failure_result(result, exc)
         return replace_frame_result(result, normalized, None)
 
     def _fetch_daily(self, code: str, start_date: str, end_date: str, purpose: str) -> MarketDataResult[pd.DataFrame]:
         try:
             ts_code = to_tushare_stock_code(code)
         except ValueError as exc:
-            return _invalid_argument(DAILY_SOURCE, exc)
+            return invalid_argument_result(DAILY_SOURCE, exc)
         raw = self._request_frame(
             DAILY_SOURCE,
             "daily",
@@ -137,8 +111,8 @@ class TushareMarketDataProvider(TushareProviderBase):
             },
             {"trade_date", "open", "high", "low", "close"},
         )
-        result = _normalize_requested_bars(raw, purpose, _parse_date(end_date))
-        return _validate_range(result, _parse_date(start_date), _parse_date(end_date))
+        result = _normalize_requested_bars(raw, purpose, parse_date(end_date))
+        return _validate_range(result, parse_date(start_date), parse_date(end_date))
 
 
 def to_tushare_stock_code(code: str) -> str:
@@ -193,8 +167,6 @@ def _normalize_tushare_bars(df: Any, source: str, purpose: str) -> MarketDataRes
         # Discard non-requested fields rather than inventing tradable OHLC/volume.
         normalized = normalized[[col for col in ("date", "close") if col in normalized]]
     required = {"date", "close"} if purpose == "index_bars" else {"date", "open", "high", "low", "close"}
-    if purpose == "daily_bars":
-        required.add("volume")
     missing = required - set(normalized.columns)
     if missing:
         return MarketDataResult(
@@ -207,7 +179,7 @@ def _normalize_tushare_bars(df: Any, source: str, purpose: str) -> MarketDataRes
         )
     keep = [col for col in ["date", "open", "high", "low", "close", "volume"] if col in normalized.columns]
     try:
-        normalized["date"] = normalized["date"].map(_format_tushare_date)
+        normalized["date"] = normalized["date"].map(_iso_date)
         for col in [c for c in ["open", "high", "low", "close", "volume"] if c in normalized.columns]:
             normalized[col] = pd.to_numeric(normalized[col], errors="raise")
             invalid = normalized[col].map(
@@ -283,20 +255,6 @@ def _validate_range(
     return result
 
 
-def _schema_failure(
-    result: MarketDataResult[pd.DataFrame], exc: Exception
-) -> MarketDataResult[pd.DataFrame]:
-    return MarketDataResult(
-        None,
-        "failed",
-        result.source,
-        result.fetched_at,
-        error_code=SCHEMA_CHANGED,
-        error_message=str(exc),
-        request_fingerprint=result.request_fingerprint,
-        row_count=result.row_count,
-    )
-
 
 def _scalar_failure(result: MarketDataResult[pd.DataFrame], source: str) -> MarketDataResult[float]:
     return MarketDataResult(
@@ -314,23 +272,13 @@ def _scalar_failure(result: MarketDataResult[pd.DataFrame], source: str) -> Mark
     )
 
 
-def _invalid_argument(source: str, exc: ValueError | OverflowError) -> MarketDataResult[Any]:
-    return MarketDataResult(
-        None,
-        "failed",
-        source,
-        now(),
-        error_code=INVALID_ARGUMENT,
-        error_message=str(exc),
-    )
-
 
 def _scalar_price_result(
     result: MarketDataResult[pd.DataFrame], requested_date: date
 ) -> MarketDataResult[float]:
     assert result.value is not None and not result.value.empty
     row = result.value.iloc[-1]
-    freshness = (requested_date - _parse_date(str(row["date"]))).days
+    freshness = (requested_date - parse_date(str(row["date"]))).days
     if freshness < 0:
         return MarketDataResult(
             None,
@@ -360,18 +308,5 @@ def _scalar_price_result(
     )
 
 
-def _compact(value: str | date) -> str:
-    return compact_date(value)
-
-
-def _format_tushare_date(value: Any) -> str:
-    return _parse_date(str(value)).isoformat()
-
-
-def _parse_date(value: str | date) -> date:
-    if isinstance(value, date):
-        return value
-    raw = str(value).strip()
-    if "-" in raw[:10]:
-        return date.fromisoformat(raw[:10])
-    return datetime.strptime(raw[:8], "%Y%m%d").date()
+def _iso_date(value: Any) -> str:
+    return parse_date(str(value)).isoformat()

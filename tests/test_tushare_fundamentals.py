@@ -373,3 +373,30 @@ def test_read_cached_industry_map_rejects_whole_malformed_mapping(
     assert result.value is None
     assert result.error_code == "CACHE_MALFORMED"
     assert result.fallback_reason == "CACHE_MALFORMED"
+
+
+def test_fundamentals_provider_accepts_client_factory_and_rate_limiter(tmp_path):
+    from a_stock_lib.providers import TushareRateLimiter
+
+    waits: list[str] = []
+
+    class _Limiter(TushareRateLimiter):
+        def wait(self) -> None:
+            waits.append("wait")
+
+    tokens: list[str] = []
+
+    def factory(token: str):
+        tokens.append(token)
+        return _FakeProClient(_sample_df())
+
+    provider = TushareFundamentalsProvider(
+        token="fake-token",
+        cache_path=tmp_path / "cache.json",
+        client_factory=factory,
+        rate_limiter=_Limiter(),
+    )
+    result = provider.fetch_industry_map()
+    assert result.status == "ok"
+    assert tokens == ["fake-token"]
+    assert waits == ["wait"]

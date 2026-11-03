@@ -15,6 +15,7 @@ import pandas as pd
 from a_stock_lib.market_data import (
     AUTH_MISSING,
     EMPTY_RESPONSE,
+    INVALID_ARGUMENT,
     MISSING_COLUMNS,
     PERMISSION_DENIED,
     RATE_LIMITED,
@@ -149,11 +150,20 @@ def request_fingerprint(endpoint: str, params: Mapping[str, Any]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def compact_date(value: str | date) -> str:
+def parse_date(value: str | date) -> date:
+    """Parse ``date``, ISO ``YYYY-MM-DD[...]`` or TuShare ``YYYYMMDD`` input."""
+    if isinstance(value, datetime):
+        return value.date()
     if isinstance(value, date):
-        return value.strftime("%Y%m%d")
+        return value
     raw = str(value).strip()
-    return date.fromisoformat(raw[:10]).strftime("%Y%m%d")
+    if "-" in raw[:10]:
+        return date.fromisoformat(raw[:10])
+    return datetime.strptime(raw[:8], "%Y%m%d").date()
+
+
+def compact_date(value: str | date) -> str:
+    return parse_date(value).strftime("%Y%m%d")
 
 
 def normalize_date_value(value: Any) -> Any:
@@ -162,8 +172,7 @@ def normalize_date_value(value: Any) -> Any:
     raw = str(value).strip()
     if not raw:
         return pd.NA
-    parsed = date.fromisoformat(raw[:10]) if "-" in raw else datetime.strptime(raw[:8], "%Y%m%d").date()
-    return parsed.isoformat()
+    return parse_date(raw).isoformat()
 
 
 def normalize_date_columns(frame: pd.DataFrame, columns: tuple[str, ...]) -> pd.DataFrame:
@@ -294,6 +303,32 @@ class TushareProviderBase:
             request_fingerprint=fingerprint,
             row_count=len(value),
         )
+
+
+def invalid_argument_result(source: str, exc: Exception) -> MarketDataResult[Any]:
+    """Structured failure for caller input rejected before any remote request."""
+    return MarketDataResult(
+        None,
+        "failed",
+        source,
+        now(),
+        error_code=INVALID_ARGUMENT,
+        error_message=str(exc),
+    )
+
+
+def schema_failure_result(result: MarketDataResult[Any], exc: Exception) -> MarketDataResult[Any]:
+    """Structured failure for a fetched payload that could not be normalized."""
+    return MarketDataResult(
+        None,
+        "failed",
+        result.source,
+        result.fetched_at,
+        error_code=SCHEMA_CHANGED,
+        error_message=str(exc),
+        request_fingerprint=result.request_fingerprint,
+        row_count=result.row_count,
+    )
 
 
 def replace_frame_result(

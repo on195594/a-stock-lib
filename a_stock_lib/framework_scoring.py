@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import functools
 import hashlib
-import inspect
+import json
 import math
 from dataclasses import dataclass
 from enum import Enum
@@ -181,70 +181,43 @@ def calculate_operating_cf_to_net_profit(
 
 Metrics = Mapping[str, Any]
 ScorerResult = tuple[list[DimensionScore], list[str], list[str]]
+# Bump RULE_VERSION whenever scoring behavior changes (thresholds, weights,
+# branches, red flags or gates). tests/test_framework_scoring.py pins both the
+# rule hashes and a behavior snapshot so an unbumped change fails CI.
 RULE_VERSION = "2026-08-23.v1"
-_SHARED_RULE_FUNCTIONS = (
-    "score_fundamentals",
-    "_number",
-    "_boolean",
-    "_missing",
-    "_higher",
-    "_lower",
-    "_subjective",
-    "_scaled",
-    "_common_red_flags",
-    "get_framework_rule",
-    "framework_threshold_rules",
-    "classify_framework_rule",
-    "_finite_number",
-    "_rule_dimension",
-    "calculate_payout_ratio",
-    "calculate_operating_cf_to_net_profit",
-)
+RULE_HASH_SCHEME = "canonical-json.v1"
 
 
-def _source_or_code(obj: Any) -> str:
-    try:
-        return inspect.getsource(obj)
-    except (OSError, TypeError):
-        code = getattr(obj, "__code__", None)
-        return str(code.co_code) if code is not None else repr(obj)
+def _rule_payload(rule: FrameworkThresholdRule) -> dict[str, object]:
+    return {
+        "rule_id": rule.rule_id,
+        "metric_key": rule.metric_key,
+        "direction": rule.direction.value,
+        "excellent": rule.excellent_threshold,
+        "pass": rule.pass_threshold,
+    }
 
 
-@functools.lru_cache(maxsize=16)
-def _cached_rule_hash(key_value: str, subjects: str, *funcs_and_classes: Any) -> str:
-    payload = "\n".join(
-        [
-            RULE_VERSION,
-            key_value,
-            subjects,
-            *(_source_or_code(obj) for obj in funcs_and_classes),
-        ]
-    )
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+@functools.cache
+def _framework_rule_hash(key: FrameworkKey) -> str:
+    payload = {
+        "scheme": RULE_HASH_SCHEME,
+        "rule_version": RULE_VERSION,
+        "framework": key.value,
+        "subjective": sorted(category.value for category in required_subjective_categories(key)),
+        "thresholds": sorted(
+            (_rule_payload(rule) for rule in framework_threshold_rules(key)),
+            key=lambda item: str(item["rule_id"]),
+        ),
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(encoded.encode("ascii")).hexdigest()
 
 
 def framework_rule_hash(framework: FrameworkKey | str) -> str:
+    """Stable identity of one framework's rule set, independent of source formatting."""
     key = framework if isinstance(framework, FrameworkKey) else FrameworkKey(framework.upper())
-    scorer_name = f"_score_{key.value.lower()}"
-    names = (*_SHARED_RULE_FUNCTIONS, scorer_name)
-    subjects = ",".join(sorted(category.value for category in required_subjective_categories(key)))
-    rules = repr(framework_threshold_rules(key))
-    objs = (
-        DimensionScore,
-        FrameworkScore,
-        FrameworkThresholdRule,
-        RuleClassification,
-        *(globals()[name] for name in names),
-    )
-    return _cached_rule_hash(key.value, f"{subjects}\n{rules}", *objs)
-
-
-def clear_rule_hash_cache() -> None:
-    """Clear the rule hash LRU cache (useful for testing and dynamic reloading)."""
-    _cached_rule_hash.cache_clear()
-
-
-framework_rule_hash.cache_clear = clear_rule_hash_cache  # type: ignore[attr-defined]
+    return _framework_rule_hash(key)
 
 
 def score_fundamentals(
@@ -270,7 +243,8 @@ def score_fundamentals(
     missing.extend(gates)
     missing.extend(
         f"subjective:{category.value}"
-        for category in required_subjective_categories(key)
+        # Sorted: iterating the frozenset would make the order vary per process.
+        for category in sorted(required_subjective_categories(key), key=lambda item: item.value)
         if category not in assessments
     )
     return FrameworkScore(
