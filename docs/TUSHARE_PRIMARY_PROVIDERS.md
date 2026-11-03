@@ -14,6 +14,14 @@
 
 `TushareFundamentalsProvider.fetch_industry_map()` 的远端与缓存命中结果都返回缓存年龄、确定性请求指纹和映射行数。行业接口没有官方业务日期，因此 `source_as_of` 保持 `None`；抓取时点只由 `fetched_at` 表示，不伪装成财报期或交易日。
 
+- 缓存默认位于 `~/.cache/a_stock_lib/tushare_industry_map.json`，TTL 30 天，可由 `cache_path` / `ttl_seconds` 注入；写入为临时文件 + fsync + 原子替换。
+- `read_cached_industry_map()` 只读缓存、不联网、不写入；缺失、损坏、结构错误、未来时间戳、读失败和过期分别返回 `CACHE_MISSING` / `CACHE_CORRUPT` / `CACHE_MALFORMED` / `CACHE_FUTURE_TIMESTAMP` / `CACHE_READ_FAILED` / `CACHE_STALE` 的 `failed` 结果。
+- `fetch_industry_map()` 缓存不可用时回源；远端成功但写缓存失败返回 `degraded` + `CACHE_WRITE_FAILED`，数据仍可用。
+
+## 实时行情时效校验
+
+`validate_quote_observation(observation, now, trading_dates)` 是无 I/O 纯函数：校验 `QuoteObservation` 的正有限价格、来源与日期时间，并按上海时区判定交易时段。`now` 必须带时区；盘中要求报价为当日且年龄不超过 `max_intraday_age_seconds`（默认 120 秒，容忍 30 秒时钟超前），盘前要求上一交易日，非交易时段要求最近交易日。合法返回 `None`，否则返回原因字符串。交易日历由调用方提供（例如 `fetch_trade_calendar`）。
+
 ## 行情价格合同（0.9.0）
 
 - `fetch_index_bars(symbol, start_date, end_date)`：闭区间请求，支持 `.SH` / `.SZ` / `.CSI`（包括 `H00300.CSI`、`H00922.CSI`）；只返回升序的 `date/close` 指数点位，不捏造 OHLC、成交量或复权含义。非法代码/日期返回 `INVALID_ARGUMENT`，缺列、非正/非有限点位、重复日期、区间外数据均 fail-closed。`source_as_of` 是实际最后观察日，`freshness_days` 相对请求截止日。
@@ -129,8 +137,11 @@ EMPTY_RESPONSE
 MISSING_COLUMNS
 SCHEMA_CHANGED
 INVALID_ARGUMENT
+SOURCE_STALE
 UNKNOWN_ERROR
 ```
+
+行业缓存另有 `CACHE_*` 错误码，见“行情与行业”。
 
 ## 测试边界
 

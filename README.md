@@ -40,7 +40,7 @@ TuShare 为可选依赖：`pip install -e '.[tushare]'`。消费者使用版本�
 - [开发约束](AGENTS.md)
 - [Provider 字段与数据语义](docs/TUSHARE_PRIMARY_PROVIDERS.md)
 - [发版与消费方验证](docs/RELEASE_CHECKLIST.md)
-- [变更历史](CHANGELOG.md)；`docs/specs/` 保留合同依据。
+- [变更历史](CHANGELOG.md)；`docs/specs/` 是历史合同依据，与当前源码或上述文档冲突时以后者为准（如 0.9.0 已移除的十年估值分位、Tracker 消费者）。
 
 ## 历史恢复
 

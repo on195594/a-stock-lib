@@ -6,8 +6,8 @@
 
 ## 步骤
 
-1. 在本仓运行全量测试和静态检查，确认版本同时更新于 `pyproject.toml`、`a_stock_lib/__init__.py` 与 `CHANGELOG.md`。
-2. 运行 `python3 -m build`，确认 wheel metadata、源码版本和文件清单一致。
+1. 在本仓运行全量测试和 `git diff --check`（本仓未配置 lint/类型检查），确认版本同时更新于 `pyproject.toml`、`a_stock_lib/__init__.py` 与 `CHANGELOG.md`。
+2. 与 CI 一致运行 `uv build` 和 `uv run python scripts/check_published_version_identity.py`，确认 wheel metadata、源码版本和文件清单一致，且未在已发布 tag 之后复用同一版本号。
 3. 发版前核对消费者的依赖元数据、锁文件及真实导入；仅验证实际使用本包的运行环境，不按旧仓库清单强制安装。
 4. 在隔离验证环境核对两个消费者对候选 wheel 的真实调用，不切换活动客户端或生产环境。消费方验证见下表；公共 API、错误或时效语义变化时，两方都纳入影响判断。实际升级按各自授权进行，未验证项必须明确记录。
 5. 从源码树外的随机 cwd 核对各实际消费环境的 `importlib.metadata.version("a-stock-lib")` 和 `a_stock_lib.__file__`，防止误用源码工作目录掩盖安装漂移。
