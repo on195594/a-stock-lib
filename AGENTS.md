@@ -13,6 +13,6 @@ This repository owns reusable deterministic A-share domain logic and market-data
 
 ## Verification
 
-Use the commands declared by `README.md` and `pyproject.toml`. Run the affected tests during development, then the proportionate repository checks and `git diff --check` before handoff. Release and downstream-consumer validation belong to `docs/RELEASE_CHECKLIST.md`, not every code change.
+Use the commands declared by `README.md` and `pyproject.toml`. Run the affected tests during development with `-x` and `nice -n 15` (avoid unthrottled full-suite runs with long timeouts), then the proportionate repository checks and `git diff --check` before handoff. Release and downstream-consumer validation belong to `docs/RELEASE_CHECKLIST.md`, not every code change.
 Ensure `pyproject.toml` preserves `[tool.pytest.ini_options] pythonpath = ["."]` so test invocations consistently prioritize current workspace code over virtualenv-installed wheels.
 When authorized to update downstream projects, execute the verification gates in `docs/RELEASE_CHECKLIST.md` for actual consumers, including verifying version metadata from an independent cwd outside the source trees.
