@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.10.0] — Unreleased
+## [0.10.0] — 2026-11-03
 
 - `framework_rule_hash` 改为 `RULE_VERSION` + 阈值表 + 主观项的规范化 JSON SHA-256，不再依赖源码文本或字节码；哈希值因此变化（规则语义未变）。新增按框架固定的哈希与跨六框架行为快照测试，评分行为变化而未升 `RULE_VERSION` 时 CI 失败。移除 `clear_rule_hash_cache` 与 `framework_rule_hash.cache_clear`。
 - 修复 `score_fundamentals().missing_inputs` 中主观项顺序随进程哈希随机变化的问题，现按类别值排序。
