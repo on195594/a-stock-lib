@@ -1,3 +1,3 @@
 """Shared market-data provider primitives for the a-stock-* projects."""
 
-__version__ = "0.10.1"
+__version__ = "0.10.2"

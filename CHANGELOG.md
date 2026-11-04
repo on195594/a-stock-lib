@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.10.2] — 2026-11-04
+
+- 恢复 `CACHE_CORRUPT`、`CACHE_MALFORMED`、`CACHE_FUTURE_TIMESTAMP` 与 `CACHE_READ_FAILED` 常量定义及 `MarketDataErrorCode` 类型兼容导出，确保历史下游消费者平滑升级无破坏性。
+- 验证：Lib 196 passed，CI 门禁与 check_published_version_identity 通过。
+- 发布 wheel SHA256：`ee4d49b4bb46f48c7a6c49946dfede678f39c011bfafc0801c9c87d92ef61cd4`。
+
 ## [0.10.1] — 2026-11-04
 
 - 行业缓存读取错误码收敛为 `CACHE_MISSING` / `CACHE_STALE`，删除细分损坏/读取错误码；时间以 `fetched_at` 为准，兼容旧缓存，停止写入重复 epoch 字段。保留原子写入及写失败降级，删除极端格式与天文数字缓存测试。
