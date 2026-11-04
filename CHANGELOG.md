@@ -4,7 +4,7 @@
 
 - 恢复 `CACHE_CORRUPT`、`CACHE_MALFORMED`、`CACHE_FUTURE_TIMESTAMP` 与 `CACHE_READ_FAILED` 常量定义及 `MarketDataErrorCode` 类型兼容导出，确保历史下游消费者平滑升级无破坏性。
 - 验证：Lib 196 passed，CI 门禁与 check_published_version_identity 通过。
-- 发布 wheel SHA256：`ee4d49b4bb46f48c7a6c49946dfede678f39c011bfafc0801c9c87d92ef61cd4`。
+- 发布 wheel SHA256：`630d9aac557a62a6c475b51d7a6c3e94d1953928dd9473f4604c1d910b301bcf`；源提交 `da978f6`。
 
 ## [0.10.1] — 2026-11-04
 
