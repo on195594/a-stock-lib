@@ -9,7 +9,7 @@
 - 收敛冗余测试：收敛 `test_tushare_quotes.py` 中与 `test_tushare_price_contract.py` 重复的指数非法区间、未来观测日和收盘价元数据测试，收敛其 dummy client；将凭据解析测试统一归集至 `test_tushare_common.py` 并移除子类 provider 重复的缺失 token 测试。
 - 对齐并精简项目文档：`README.md` 精简历史提交快照长篇描述并对齐 `uv` 验证命令；`docs/TUSHARE_PRIMARY_PROVIDERS.md` 精简历史跨版本迁移章节。
 - 验证：Lib 196 passed，CI 门禁与 check_published_version_identity 通过。
-- 发布 wheel SHA256：`4ee7360e4c20b3bbb8a22d07d0cfd87c4f69f4b3433c93a18a4c4ed6d5c96c19`。
+- 发布 wheel SHA256：`bd766933181a4f035f7c6e4138f4ea32d0e6f0dd085a04b2fcfc63afe84f8f8b`；源提交 `31bb1f0`。
 
 ## [0.10.0] — 2026-11-03
 
