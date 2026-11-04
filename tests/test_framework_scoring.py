@@ -430,3 +430,77 @@ def test_rule_hash_changes_with_public_owner_rule(monkeypatch) -> None:
     finally:
         monkeypatch.undo()
         framework_scoring._framework_rule_hash.cache_clear()
+
+
+@pytest.mark.parametrize(
+    ("framework", "metrics", "expected_flag", "should_trigger"),
+    [
+        # Framework A: goodwill > 30, controller_pledge > 70, booleans
+        ("A", {"goodwill_to_assets": 30.0}, "goodwill_to_assets_above_30", False),
+        ("A", {"goodwill_to_assets": 30.01}, "goodwill_to_assets_above_30", True),
+        ("A", {"controller_pledge_ratio": 70.0}, "controller_pledge_above_70", False),
+        ("A", {"controller_pledge_ratio": 70.01}, "controller_pledge_above_70", True),
+        ("A", {"receivables_sustained_surge": True}, "receivables_sustained_surge", True),
+        ("A", {"receivables_sustained_surge": False}, "receivables_sustained_surge", False),
+        ("A", {"operating_cf_consecutive_negative": True}, "operating_cf_consecutive_negative", True),
+        ("A", {"operating_cf_consecutive_negative": False}, "operating_cf_consecutive_negative", False),
+        # Framework B: capital_adequacy < 10, npl_rising > 2, booleans
+        ("B", {"capital_adequacy_ratio": 10.0}, "capital_adequacy_below_10", False),
+        ("B", {"capital_adequacy_ratio": 9.99}, "capital_adequacy_below_10", True),
+        ("B", {"npl_two_years_rising": True, "npl_ratio": 2.0}, "npl_rising_above_2", False),
+        ("B", {"npl_two_years_rising": True, "npl_ratio": 2.01}, "npl_rising_above_2", True),
+        ("B", {"npl_two_years_rising": False, "npl_ratio": 2.5}, "npl_rising_above_2", False),
+        ("B", {"core_tier1_capital_declining": True}, "core_tier1_capital_declining", True),
+        # Framework C: debt_ratio > 70, reserve_life < 10
+        ("C", {"debt_ratio": 70.0}, "debt_ratio_above_70", False),
+        ("C", {"debt_ratio": 70.01}, "debt_ratio_above_70", True),
+        ("C", {"reserve_life_years": 10.0}, "reserve_life_below_10", False),
+        ("C", {"reserve_life_years": 9.99}, "reserve_life_below_10", True),
+        # Framework D: debt_ratio > 75, dividend_yield_declined with yield < 2
+        ("D", {"debt_ratio": 75.0}, "debt_ratio_above_75", False),
+        ("D", {"debt_ratio": 75.01}, "debt_ratio_above_75", True),
+        (
+            "D",
+            {"dividend_yield_declined_two_years": True, "current_dividend_yield": 2.0},
+            "dividend_decline_below_2",
+            False,
+        ),
+        (
+            "D",
+            {"dividend_yield_declined_two_years": True, "current_dividend_yield": 1.99},
+            "dividend_decline_below_2",
+            True,
+        ),
+        (
+            "D",
+            {"dividend_yield_declined_two_years": False, "current_dividend_yield": 1.5},
+            "dividend_decline_below_2",
+            False,
+        ),
+        # Framework E booleans
+        ("E", {"inventory_accumulating_two_years": True}, "inventory_accumulating_two_years", True),
+        ("E", {"channel_stuffing": True}, "channel_stuffing", True),
+        ("E", {"price_increase_resisted": True}, "price_increase_resisted", True),
+        # Framework F booleans
+        ("F", {"nonrecurring_profit_above_30": True}, "nonrecurring_profit_above_30", True),
+        ("F", {"top5_customers_above_50_without_contract": True}, "top5_customers_above_50_without_contract", True),
+        ("F", {"core_technical_leader_left": True}, "core_technical_leader_left", True),
+        ("F", {"rd_spend_declined_two_years": True}, "rd_spend_declined_two_years", True),
+        ("F", {"goodwill_assets_above_20": True}, "goodwill_assets_above_20", True),
+        # Common custom red flags and malformed input fallback
+        ("A", {"red_flags": ["custom_flag"]}, "custom_flag", True),
+        ("A", {"red_flags": "not-a-list"}, "invalid_red_flags", True),
+    ],
+)
+def test_red_flags_strict_boundaries_and_triggers(
+    framework: str,
+    metrics: dict,
+    expected_flag: str,
+    should_trigger: bool,
+) -> None:
+    score = score_fundamentals(framework, metrics, [])
+    if should_trigger:
+        assert expected_flag in score.red_flags
+        assert score.blocked is True
+    else:
+        assert expected_flag not in score.red_flags
