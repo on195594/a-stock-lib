@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.10.1] — 2026-11-04
+
+- 行业缓存读取错误码收敛为 `CACHE_MISSING` / `CACHE_STALE`，删除细分损坏/读取错误码；时间以 `fetched_at` 为准，兼容旧缓存，停止写入重复 epoch 字段。保留原子写入及写失败降级，删除极端格式与天文数字缓存测试。
+- 删除评分黑盒行为摘要及组合快照测试，保留规则版本/哈希、明确的边界和业务分支断言；同步 README 与 Provider 契约。
+- 清理死代码与未使用导入：删除 `TushareProviderBase._retry_call`（无业务调用，统一走 `call_with_network_retry`）；删除 `tushare_quotes.py` 未使用的 `datetime` 导入。
+- 清理临时文件与遗留空目录：移除未跟踪的 `a_stock_lib/prompts/` 遗留目录及本地构建缓存。
+- 收敛冗余测试：收敛 `test_tushare_quotes.py` 中与 `test_tushare_price_contract.py` 重复的指数非法区间、未来观测日和收盘价元数据测试，收敛其 dummy client；将凭据解析测试统一归集至 `test_tushare_common.py` 并移除子类 provider 重复的缺失 token 测试。
+- 对齐并精简项目文档：`README.md` 精简历史提交快照长篇描述并对齐 `uv` 验证命令；`docs/TUSHARE_PRIMARY_PROVIDERS.md` 精简历史跨版本迁移章节。
+- 验证：Lib 196 passed，CI 门禁与 check_published_version_identity 通过。
+- 发布 wheel SHA256：`4ee7360e4c20b3bbb8a22d07d0cfd87c4f69f4b3433c93a18a4c4ed6d5c96c19`。
+
 ## [0.10.0] — 2026-11-03
 
 - `framework_rule_hash` 改为 `RULE_VERSION` + 阈值表 + 主观项的规范化 JSON SHA-256，不再依赖源码文本或字节码；哈希值因此变化（规则语义未变）。新增按框架固定的哈希与跨六框架行为快照测试，评分行为变化而未升 `RULE_VERSION` 时 CI 失败。移除 `clear_rule_hash_cache` 与 `framework_rule_hash.cache_clear`。

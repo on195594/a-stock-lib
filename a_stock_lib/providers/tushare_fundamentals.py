@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import math
 import os
 import re
 import tempfile
@@ -11,13 +10,8 @@ from pathlib import Path
 from typing import Any
 
 from a_stock_lib.market_data import (
-    CACHE_CORRUPT,
-    CACHE_FUTURE_TIMESTAMP,
-    CACHE_MALFORMED,
     CACHE_MISSING,
-    CACHE_READ_FAILED,
     CACHE_STALE,
-    MarketDataErrorCode,
     MarketDataResult,
     now,
 )
@@ -115,42 +109,17 @@ class TushareFundamentalsProvider(TushareProviderBase):
         """Read and validate the configured cache without network access or writes."""
         fingerprint = request_fingerprint("stock_basic", _INDUSTRY_PARAMS)
         try:
-            if not self.cache_path.is_file():
-                return self._cache_failure(CACHE_MISSING, fingerprint)
             payload = json.loads(self.cache_path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-            return self._cache_failure(CACHE_CORRUPT, fingerprint, str(exc))
-        except OSError as exc:
-            return self._cache_failure(CACHE_READ_FAILED, fingerprint, str(exc))
+            fetched_at = payload["fetched_at"]
+            epoch = datetime.fromisoformat(fetched_at).timestamp()
+            industry_map = self._validated_industry_map(payload["industry_map"])
+        except (OSError, ValueError, TypeError, KeyError) as exc:
+            return self._cache_failure(fingerprint, str(exc))
 
-        if not isinstance(payload, dict):
-            return self._cache_failure(CACHE_MALFORMED, fingerprint)
-        fetched_at = payload.get("fetched_at")
-        fetched_at_epoch = payload.get("fetched_at_epoch")
-        if not isinstance(fetched_at, str) or not fetched_at.strip():
-            return self._cache_failure(CACHE_MALFORMED, fingerprint)
-        if isinstance(fetched_at_epoch, bool) or not isinstance(
-            fetched_at_epoch, (int, float)
-        ):
-            return self._cache_failure(CACHE_MALFORMED, fingerprint)
-        try:
-            epoch = float(fetched_at_epoch)
-            parsed_epoch = datetime.fromisoformat(fetched_at).timestamp()
-        except (OverflowError, TypeError, ValueError):
-            return self._cache_failure(CACHE_MALFORMED, fingerprint)
-        if not math.isfinite(epoch) or not math.isfinite(parsed_epoch):
-            return self._cache_failure(CACHE_MALFORMED, fingerprint)
+        age_seconds = time.time() - epoch
+        if age_seconds < 0 or industry_map is None:
+            return self._cache_failure(fingerprint)
 
-        current_epoch = time.time()
-        if epoch > current_epoch or parsed_epoch > current_epoch:
-            return self._cache_failure(CACHE_FUTURE_TIMESTAMP, fingerprint)
-        if abs(parsed_epoch - epoch) > 1.0:
-            return self._cache_failure(CACHE_MALFORMED, fingerprint)
-        industry_map = self._validated_industry_map(payload.get("industry_map"))
-        if industry_map is None:
-            return self._cache_failure(CACHE_MALFORMED, fingerprint)
-
-        age_seconds = current_epoch - epoch
         freshness_days = int(age_seconds / 86400)
         if age_seconds > self.ttl_seconds:
             return MarketDataResult(
@@ -192,15 +161,15 @@ class TushareFundamentalsProvider(TushareProviderBase):
 
     @staticmethod
     def _cache_failure(
-        code: MarketDataErrorCode, fingerprint: str, message: str | None = None
+        fingerprint: str, message: str | None = None
     ) -> MarketDataResult[dict[str, str]]:
         return MarketDataResult(
             None,
             "failed",
             TUSHARE_FUNDAMENTALS_SOURCE,
             now(),
-            fallback_reason=code,
-            error_code=code,
+            fallback_reason=CACHE_MISSING,
+            error_code=CACHE_MISSING,
             error_message=message,
             request_fingerprint=fingerprint,
         )
@@ -211,7 +180,6 @@ class TushareFundamentalsProvider(TushareProviderBase):
             {
                 "industry_map": industry_map,
                 "fetched_at": now(),
-                "fetched_at_epoch": time.time(),
             },
             ensure_ascii=False,
         )
@@ -225,11 +193,11 @@ class TushareFundamentalsProvider(TushareProviderBase):
                 suffix=".tmp",
                 delete=False,
             ) as temp_file:
+                temp_path = Path(temp_file.name)
                 temp_file.write(payload)
                 temp_file.flush()
                 os.fsync(temp_file.fileno())
-                temp_path = Path(temp_file.name)
             temp_path.replace(self.cache_path)
         finally:
-            if temp_path is not None and temp_path.exists():
-                temp_path.unlink()
+            if temp_path is not None:
+                temp_path.unlink(missing_ok=True)

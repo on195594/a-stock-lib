@@ -19,6 +19,7 @@ from a_stock_lib.providers.tushare_common import (
     call_with_network_retry,
     classify_tushare_exception,
     compact_date,
+    read_tushare_token,
 )
 from a_stock_lib.providers import (
     TushareDividendProvider,
@@ -69,6 +70,14 @@ class _FakeClock:
 def test_default_suite_starts_without_external_credentials() -> None:
     for name in ("TUSHARE_TOKEN", "TG_TOKEN", "TG_CHAT_ID", "HTTPS_PROXY", "HTTP_PROXY", "ALL_PROXY"):
         assert name not in os.environ
+
+
+def test_read_tushare_token_handles_spaces_comments_and_directories(tmp_path) -> None:
+    env_path = tmp_path / ".env"
+    env_path.write_text('TUSHARE_TOKEN = "file-token-789" # comment\n')
+
+    assert read_tushare_token(env_path) == "file-token-789"
+    assert read_tushare_token(tmp_path) is None
 
 
 def test_market_data_result_carries_ingestion_metadata() -> None:

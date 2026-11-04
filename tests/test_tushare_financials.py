@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from a_stock_lib.market_data import AUTH_MISSING, MISSING_COLUMNS
+from a_stock_lib.market_data import MISSING_COLUMNS
 from a_stock_lib.providers.tushare_financials import (
     BALANCE_SHEET_SOURCE,
     CASHFLOW_SOURCE,
@@ -219,12 +219,3 @@ def test_empty_dividend_history_is_valid_no_event_result() -> None:
     assert result.row_count == 0
     assert result.value is not None
     assert result.value.empty
-
-
-def test_missing_token_fails_without_building_real_client(tmp_path) -> None:
-    provider = TushareFinancialProvider(token=None, env_path=tmp_path / "missing.env")
-
-    result = provider.fetch_indicator_history("600036")
-
-    assert result.status == "failed"
-    assert result.error_code == AUTH_MISSING

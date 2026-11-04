@@ -15,7 +15,7 @@
 `TushareFundamentalsProvider.fetch_industry_map()` 的远端与缓存命中结果都返回缓存年龄、确定性请求指纹和映射行数。行业接口没有官方业务日期，因此 `source_as_of` 保持 `None`；抓取时点只由 `fetched_at` 表示，不伪装成财报期或交易日。
 
 - 缓存默认位于 `~/.cache/a_stock_lib/tushare_industry_map.json`，TTL 30 天，可由 `cache_path` / `ttl_seconds` 注入；写入为临时文件 + fsync + 原子替换。
-- `read_cached_industry_map()` 只读缓存、不联网、不写入；缺失、损坏、结构错误、未来时间戳、读失败和过期分别返回 `CACHE_MISSING` / `CACHE_CORRUPT` / `CACHE_MALFORMED` / `CACHE_FUTURE_TIMESTAMP` / `CACHE_READ_FAILED` / `CACHE_STALE` 的 `failed` 结果。
+- `read_cached_industry_map()` 只读缓存、不联网、不写入；过期返回 `CACHE_STALE`，缺失、损坏、结构错误、未来时间戳或读失败统一返回 `CACHE_MISSING`，状态均为 `failed`。缓存年龄以 `fetched_at` 为准；旧缓存仍可读取，新写入不再保存重复的 `fetched_at_epoch`。
 - `fetch_industry_map()` 缓存不可用时回源；远端成功但写缓存失败返回 `degraded` + `CACHE_WRITE_FAILED`，数据仍可用。
 
 ## 实时行情时效校验
@@ -29,18 +29,10 @@
 - `fetch_trade_calendar` 返回 SSE 交易日期表，不将计划交易日标作行情观察日。
 - `to_tushare_stock_code` / `to_tushare_index_code` 是公开的代码规范化函数。
 
-### 0.9.0 → 0.10.0 迁移
+### 接口变动记录
 
-- 稳定公共表面以 `a_stock_lib.providers.__all__` 与 `a_stock_lib.market_data.__all__` 为准，包内附带 `py.typed`。`to_tushare_stock_code` / `to_tushare_index_code` 可直接从 `a_stock_lib.providers` 导入。
-- 移除无消费者的 `fetch_daily_bars_range`；`MarketSession` / `market_session` 不再导出（后者改为私有）。
-- `MarketDataResult.fetched_at` 改为带 `+08:00` 偏移的上海时间 ISO 字符串；比较时请用带时区的 `datetime`。
-- `TushareFundamentalsProvider` 与其他 Provider 一样接受 `client_factory` 与 `rate_limiter`。
-
-### 0.8.2 → 0.9.0 迁移
-
-删除无实际消费者的 `MarketDataProvider` 协议、`fetch_l3_bars`、`INSUFFICIENT_WINDOW`、`SOURCE_DISABLED`。旧 `fetch_score_price` / `fetch_outcome_price` 合并为 `fetch_close_price`；`fetch_index_bars` 必须显式提供起止日期。
-
-退役无实际消费者的 `valuation.py` 十年月度分位算法和 `fetch_daily_basic_by_trade_date` 全市场截面接口及其专属测试。Research 的五年 PE 分位、选股/回测截面仍由该应用维护，不强制迁移不同语义。两个应用在用的 `fetch_valuation_history` 不变。
+- **0.10.x**：稳定公共表面以 `a_stock_lib.providers.__all__` 与 `a_stock_lib.market_data.__all__` 为准，包含 `py.typed`；`MarketDataResult.fetched_at` 统一为带 `+08:00` 的上海时间 ISO 字符串；移除无消费者的 `fetch_daily_bars_range` 与 `MarketSession` 顶层导出。
+- **0.9.0**：移除旧 Tracker 遗留 `MarketDataProvider`、`fetch_l3_bars` 与十年月度分位算法；`fetch_score_price` / `fetch_outcome_price` 合并为 `fetch_close_price`；`fetch_index_bars` 要求显式起止日期并支持全收益指数。详细过程见 [CHANGELOG.md](../CHANGELOG.md)。
 
 ## 估值
 

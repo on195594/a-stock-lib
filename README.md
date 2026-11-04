@@ -20,30 +20,33 @@ A 股共享的确定性计算与数据 Provider。只维护有真实消费者的
 |---|---|
 | `market_data.py` | `MarketDataResult`、状态与错误码 |
 | `contracts.py` | 框架、周期、主观证据 typed contract |
-| `framework_scoring.py` | A—F 基本面 60 分 report-only 纯函数；规则哈希为 `RULE_VERSION` + 阈值表的规范化 JSON 摘要，行为快照测试防止未升版的规则漂移 |
+| `framework_scoring.py` | A—F 基本面 60 分 report-only 纯函数；规则哈希为 `RULE_VERSION` + 阈值表的规范化 JSON 摘要，固定规则哈希与显式边界、分支断言守护规则行为 |
 | `fetcher_utils.py` | 送转复权（显式 `as_of`，兼容 TuShare/AKShare 字段） |
 | `providers/` | TuShare adapters、行业缓存、实时行情时效校验；稳定导出见 `providers.__all__` |
 
 来源、时间、缺失、降级和 fallback 必须可追溯；Provider 错误结构化，缓存原子写入，SDK 懒加载且可注入。评分不完整或被阻断时不得用于投资动作；本包不做择时、仓位、状态写入或收益承诺。
 
-## 开发与发布
+## 开发与验证
 
 ```bash
-python3 -m venv .venv
-.venv/bin/pip install -e '.[dev]'
-.venv/bin/python -m pytest tests -q
+# 开发环境与依赖同步
+uv sync --extra dev
+
+# 运行全量测试
+nice -n 15 uv run pytest -x
+
+# 检查代码格式与发版一致性
+python3 scripts/check_published_version_identity.py
 git diff --check
 ```
 
-TuShare 为可选依赖：`pip install -e '.[tushare]'`。消费者使用版本化 wheel，不使用源码软链接。源码版本以 `pyproject.toml` 和 `a_stock_lib/__init__.py` 为准；部署版本以各消费者的锁文件和部署记录为准，不能由源码版本推断。
+TuShare 为可选依赖：`uv pip install -e '.[tushare]'`（或 `pip install -e '.[tushare]'`）。消费者使用版本化 wheel，不使用源码软链接。源码版本以 `pyproject.toml` 和 `a_stock_lib/__init__.py` 为准；部署版本以各消费者的锁文件和部署记录为准，不能由源码版本推断。
 
 - [开发约束](AGENTS.md)
 - [Provider 字段与数据语义](docs/TUSHARE_PRIMARY_PROVIDERS.md)
 - [发版与消费方验证](docs/RELEASE_CHECKLIST.md)
-- [变更历史](CHANGELOG.md)；`docs/specs/` 是历史合同依据，与当前源码或上述文档冲突时以后者为准（如 0.9.0 已移除的十年估值分位、Tracker 消费者）。
+- [变更历史](CHANGELOG.md)；`docs/specs/` 是历史合同依据，与当前源码或上述文档冲突时以后者为准。
 
-## 历史恢复
+## 历史快照
 
-已完成的 2026-06/07 迁移设计、四份计划和 `HANDOFF.md` 不再作为开发入口，内容由 Git 历史保存。清理前快照：`6dc856ea1183fe6f6c8ff9f5201b0c920b5008ec`；例如 `git show 6dc856ea:HANDOFF.md`。历史日志中的旧路径按同样方式恢复，不重新执行旧安装、cron 或多 Agent 流程。
-
-旧 `.claude/ai-collab/` 配置/流水线状态和已退休文本 parser 的容错 Spec 也移出活动树；删除前快照为 `d2f62b554fdcceda0f15eee89df3f2e66ce8198a`。当前只保留 typed contract，不恢复旧标签 parser 或客户端专属治理入口。Tracker 时期的 `docs/reviews/` 审查记录和无消费者的 `MarketDataProvider` 协议、`fetch_l3_bars` 在 0.9.0 移出，删除前快照为 `acabb35`。
+已完成的 2026-06/07 迁移设计、四份计划、`HANDOFF.md`、旧 AI 流水线配置和已退休文本 parser / 审查记录已移出活动树，由 Git 历史和归档 tag 保存。历史快照参考：`6dc856ea`（迁移设计）、`d2f62b55`（旧流水线）、`acabb35`（Tracker 审查记录）。当前分支只维护当前有效公共 typed contract 与 provider 契约。
