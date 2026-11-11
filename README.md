@@ -2,7 +2,7 @@
 
 A 股共享的确定性计算与数据 Provider。只维护有真实消费者的公共语义，不承载产品流程或 Agent 调度。
 
-> **并入中（所有者 2026-11-11 决定）**：本仓库正在并入 [a-share-research](https://github.com/on195594/a-share-research) 的 `core/`，2026-12-07 前归档。新功能在 a-share-research 进行，这里只接受生产故障修复并同步过去。见[合一重构方案](https://github.com/on195594/a-share-research/blob/main/docs/consolidation.md)。
+> **并入中（所有者 2026-11-11 决定）**：本仓库正在并入 [a-share-research](https://github.com/on195594/a-share-research) 的 `core/`，2026-12-12 前归档。新功能在 a-share-research 进行，这里只接受生产故障修复并同步过去。见[合一重构方案](https://github.com/on195594/a-share-research/blob/main/docs/consolidation.md)。
 
 ## 项目分工
 

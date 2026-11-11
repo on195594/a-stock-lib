@@ -1,6 +1,6 @@
 # a-stock-lib repository rules
 
-This repository is being merged into `a-share-research` (`core/`) and will be archived by 2026-12-07 (owner decision 2026-11-11, see `a-share-research/docs/consolidation.md`). Add new capabilities there; land only production fixes here and mirror them.
+This repository is being merged into `a-share-research` (`core/`) and will be archived by 2026-12-12 (owner decision 2026-11-11, see `a-share-research/docs/consolidation.md`). Add new capabilities there; land only production fixes here and mirror them.
 
 This repository owns reusable deterministic A-share domain logic and market-data Provider primitives. Its current direct consumers are `a-stock-agent-skills` and `a-share-research`, each with independent state and releases. `a-stock-tracker` is stopped; its former future-consumer plan is no longer active. Keep existing consumed APIs here, but do not extract new application-only policy or add consumers merely to justify sharing. Current code and tests are authoritative. Read `README.md` for ownership, shared planning links and the current package surface, the relevant provider contract only when changing it, and `docs/RELEASE_CHECKLIST.md` only for release work. Completed migration plans are recoverable from Git, not prerequisites for development.
 
