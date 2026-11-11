@@ -2,6 +2,8 @@
 
 A 股共享的确定性计算与数据 Provider。只维护有真实消费者的公共语义，不承载产品流程或 Agent 调度。
 
+> **并入中（所有者 2026-11-11 决定）**：本仓库正在并入 [a-share-research](https://github.com/on195594/a-share-research) 的 `core/`，2026-12-07 前归档。新功能在 a-share-research 进行，这里只接受生产故障修复并同步过去。见[合一重构方案](https://github.com/on195594/a-share-research/blob/main/docs/consolidation.md)。
+
 ## 项目分工
 
 - **a-stock-lib**：行情/财务 Provider、来源与时效、A—F typed contract、基本面评分、历史估值数据与送转计算。
@@ -10,7 +12,7 @@ A 股共享的确定性计算与数据 Provider。只维护有真实消费者的
 
 保留独立包和版本锁定；当前直接消费者是上述两个应用。各自独立存储与发布，公共接口变更按实际影响验证两方。Research 优先复用现有 Provider，缺少的接口按其项目约束直接调用 TuShare；出现真实复用需求后再评估公共能力，不为共享搬迁应用代码。
 
-三项目的[项目契约](https://github.com/on195594/a-share-research/blob/main/docs/project-contract.md)、[路线图](https://github.com/on195594/a-share-research/blob/main/docs/roadmap.md)和[实施计划](https://github.com/on195594/a-share-research/blob/main/docs/implementation-plan.md)统一维护在 `a-share-research/docs/`。报告只读复用仍为规划项，Lib 不承载其接口、研究流程或 Agent 调度。
+三项目的[项目契约](https://github.com/on195594/a-share-research/blob/main/docs/project-contract.md)、[路线图](https://github.com/on195594/a-share-research/blob/main/docs/roadmap.md)和[实施计划](https://github.com/on195594/a-share-research/blob/main/docs/implementation-plan.md)统一维护在 `a-share-research/docs/`。Lib 不承载研究接口、研究流程或 Agent 调度。
 
 `a-stock-tracker` 已停止，其未来消费和 MCP 接入计划已取消，只保留历史参考。历史 Tracker Framework A 已结案；本包现有 A—F 计算合同继续维护。
 
